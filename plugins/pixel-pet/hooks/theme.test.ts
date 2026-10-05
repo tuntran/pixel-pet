@@ -167,14 +167,16 @@ test('a pet carries its own frames by mode, and an eye color by mode', () => {
     sprite: ['aaa'],
     palette: { a: '#44cc44', y: '#ffe25a' },
     eyes: [[0, 1], [4, 1]],
-    frames: { run: [['aaa', 'a.a'], ['aaa', '.a.']], jump: ['yay'], fly: [['a']], bash: Array.from({ length: 9 }, () => ['a']) },
+    frames: { run: [['aaa', 'a.a'], ['aaa', '.a.']], jump: ['yay'], stand: ['aya'], fly: [['a']], bash: Array.from({ length: 9 }, () => ['a']) },
+    wander: true,
     eyeColors: { think: '#fc0', read: 'gold' },
     faces: { bash: 'focus', cheer: 'smug' },
   })
   if (read.errors) {
     throw new Error(read.errors.join('\n'))
   }
-  expect(read.theme.frames).toEqual({ run: [['aaa', 'a.a'], ['aaa', '.a.']], jump: [['yay']], bash: Array.from({ length: 8 }, () => ['a']) })
+  expect(read.theme.frames).toEqual({ run: [['aaa', 'a.a'], ['aaa', '.a.']], jump: [['yay']], stand: [['aya']], bash: Array.from({ length: 8 }, () => ['a']) })
+  expect([read.theme.wander, themeOf(slime).wander]).toEqual([true, false])
   expect(read.theme.eyeColors).toEqual({ think: '#ffcc00' })
   expect(read.theme.faces).toEqual({ bash: 'focus' })
   expect(read.notes.filter(n => !n.includes('eye at'))).toEqual([
@@ -185,7 +187,7 @@ test('a pet carries its own frames by mode, and an eye color by mode', () => {
   ])
   const body = animate(read.theme)
   expect(body.frames.run?.frames).toHaveLength(2)
-  expect([body.frames.run?.fps, body.frames.jump?.fps]).toEqual([8, 1 / (14 / 12)])
+  expect([body.frames.run?.fps, body.frames.jump?.fps, body.frames.stand?.fps]).toEqual([8, 1 / (14 / 12), 2])
   expect(body.frames.run?.frames[1]?.g.at(-1)).toBe('.............a.............')
   expect(body.eyeColors).toEqual({ think: 0xffcc00 })
   expect(body.faces).toEqual({ bash: 'focus' })
@@ -227,12 +229,12 @@ test('a look the mod cannot use is left out or cut, with a note', () => {
 
 test('a scene keeps its ground, obstacles, and decor in the palette, and notes what it cut', () => {
   const palette = { ...slime.palette, r: '#9aa0b0' }
-  const read = readTheme({ ...slime, palette, scene: { ground: ['rr'], obstacles: [['rrrrrrrrrr', 'rrrrrrrrrr']], decor: ['zz'], every: 10 } })
+  const read = readTheme({ ...slime, palette, scene: { ground: ['rr'], obstacles: [['r'.repeat(18), 'r'.repeat(18)]], decor: ['zz'], every: 10 } })
   if (read.errors) {
     throw new Error(read.errors.join('\n'))
   }
-  expect(read.theme.scene).toEqual({ ground: ['rr'], obstacles: [['rrrrrrrr', 'rrrrrrrr']], decor: [['zz']], every: 30 })
-  expect(read.notes.some(n => n.includes('`scene.obstacles` 1 is 10×2, past the largest, 8×6'))).toBe(true)
+  expect(read.theme.scene).toEqual({ ground: ['rr'], obstacles: [['r'.repeat(16), 'r'.repeat(16)]], decor: [['zz']], every: 30 })
+  expect(read.notes.some(n => n.includes('`scene.obstacles` 1 is 18×2, past the largest, 16×8'))).toBe(true)
   expect(read.notes.some(n => n.includes('In `scene.decor` 1, "z" has no palette color'))).toBe(true)
   expect(read.notes.some(n => n.includes('`scene.every` is a number of columns from 30 to 120, so it is 30.'))).toBe(true)
 })

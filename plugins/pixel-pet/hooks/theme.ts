@@ -19,7 +19,8 @@ export type Theme = {
   mini: { top: string; body: string; edge: string }
   miniSprite?: string[]
   props: Body['props']
-  frames: Partial<Record<Mode, string[][]>> // the pet's own drawn frames by mode, in place of its clip
+  frames: Partial<Record<Mode | 'stand', string[][]>> // the pet's own drawn frames by mode, in place of its clip; `stand` for every mode on the stand clip
+  wander: boolean
   eyeColors: Partial<Record<Mode, string>>
   faces: Partial<Record<Mode, string>>
   scene?: Scene
@@ -36,7 +37,7 @@ const PROP_SIZE = { w: PROP_W, h: HEIGHT }
 const MAX_PROP_FRAMES = 8
 const FRAME_SIZE = { w: BODY_W, h: HEIGHT }
 const MAX_FRAMES = 8
-const FRAME_FPS: Partial<Record<Mode, number>> = { run: 8 } // a looping mode's own frames; 4 fps in the others
+const FRAME_FPS: Partial<Record<Mode | 'stand', number>> = { run: 8, stand: 2 } // a looping mode's own frames; 4 fps in the others
 const MAX_LINE = 40 // characters in a status line, so it fits beside the pet
 const MAX_LABEL = 6 // characters in a HUD label, so the HUD fits its window
 const BARS = ['hp', 'mp', 'st'] as const
@@ -167,7 +168,7 @@ function readProps(v: unknown, palette: Record<string, string>, notes: string[])
 
 /** The pet's own drawn frames by mode: each a list of up to MAX_FRAMES frames of rows, or one frame. */
 function readFrames(v: unknown, palette: Record<string, string>, notes: string[]) {
-  return byMode(v, 'frames', (value, mode) => {
+  return byMode<string[][], Mode | 'stand'>(v, 'frames', (value, mode) => {
     const list = Array.isArray(value) && value.length > 0 && value.every(Array.isArray) ? value : [value]
     if (list.length > MAX_FRAMES) {
       notes.push(`\`frames.${mode}\` keeps its first ${MAX_FRAMES} frames.`)
@@ -177,12 +178,12 @@ function readFrames(v: unknown, palette: Record<string, string>, notes: string[]
       .map((f, i) => paletteRows(f, FRAME_SIZE, palette, list.length > 1 ? `frame ${i + 1} of \`frames.${mode}\`` : `\`frames.${mode}\``, notes))
       .filter((f): f is string[] => f !== undefined)
     return kept.length > 0 ? kept : undefined
-  }, notes)
+  }, notes, ['stand'])
 }
 
-/** Status lines or line colors by mode, each value checked by `read`. */
-function byMode<T>(v: unknown, field: string, read: (value: unknown, mode: string) => T | undefined, notes: string[]) {
-  const out: Partial<Record<Mode, T>> = {}
+/** Status lines or line colors by mode, each value checked by `read`. `extra` names keys allowed beside the modes. */
+function byMode<T, K extends string = Mode>(v: unknown, field: string, read: (value: unknown, mode: string) => T | undefined, notes: string[], extra: string[] = []) {
+  const out: Partial<Record<K, T>> = {}
   if (v === undefined) {
     return out
   }
@@ -191,13 +192,13 @@ function byMode<T>(v: unknown, field: string, read: (value: unknown, mode: strin
     return out
   }
   for (const [mode, value] of Object.entries(v)) {
-    if (!(mode in MODES)) {
+    if (!(mode in MODES) && !extra.includes(mode)) {
       notes.push(`"${mode}" in \`${field}\` is not a mode, so it is left out.`)
       continue
     }
     const kept = read(value, mode)
     if (kept !== undefined) {
-      out[mode as Mode] = kept
+      out[mode as K] = kept
     }
   }
 
@@ -430,6 +431,7 @@ export function readTheme(v: unknown): { theme: Theme; notes: string[]; errors?:
       frames: readFrames(v.frames, palette, notes),
       eyeColors: readColors(v.eyeColors, 'eyeColors', 'the pet\'s eye color', notes),
       faces: readFaces(v.faces, notes),
+      wander: v.wander === true,
       lines: readLines(v.lines, notes),
       lineColors: readColors(v.lineColors, 'lineColors', 'its own color', notes),
       hud: readHud(v.hud, notes),
@@ -522,13 +524,14 @@ export function animate(theme: Theme): Body {
     props: theme.props,
     frames: Object.fromEntries(
       Object.entries(theme.frames).map(([mode, list]) => {
-        const once = MODES[mode as Mode].once
-        const fps = once === undefined ? (FRAME_FPS[mode as Mode] ?? 4) : list.length / (once / 1000)
+        const once = mode === 'stand' ? undefined : MODES[mode as Mode].once
+        const fps = once === undefined ? (FRAME_FPS[mode as Mode | 'stand'] ?? 4) : list.length / (once / 1000)
         return [mode, { fps, frames: list.map((rows, i) => poseFrame(theme, [1, 1], mode === 'cheer' ? cheerSparkles(i) : [], rows)) }]
       }),
     ),
     eyeColors: Object.fromEntries(Object.entries(theme.eyeColors).map(([mode, c]) => [mode, colorOf(c)])),
     faces: theme.faces,
+    wander: theme.wander,
     look: { lines: theme.lines, lineColors: theme.lineColors, hud: theme.hud },
     scene: theme.scene,
     clips: {

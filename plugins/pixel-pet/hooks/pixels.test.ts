@@ -142,3 +142,23 @@ test("a mode's own frames replace its clip, and its eye color recolors the pupil
   expect(compose(own, 'idle', 0, 1).px).toContain(0x3d84f0)
   expect(compose(own, 'idle', 0, 1).px).not.toContain(0xffd700)
 })
+
+test('stand frames draw every mode on the stand clip, unless the mode has its own', () => {
+  const green = { ...frame, g: frame.g.map(r => r.replace(/d/g, 'g')) }
+  const red = { ...frame, g: frame.g.map(r => r.replace(/d/g, 'r')) }
+  const own: Body = { ...body, palette: { d: 0x3d84f0, g: 0x44cc44, r: 0xcc4444 }, frames: { stand: { fps: 2, frames: [green] }, edit: { fps: 4, frames: [red] } } }
+  for (const mode of ['idle', 'read', 'sleep'] as const) {
+    expect(compose(own, mode, 0, 1).px).toContain(0x44cc44)
+  }
+  expect(compose(own, 'edit', 0, 1).px).toContain(0xcc4444)
+  expect(compose(own, 'think', 0, 1).px).toContain(0x3d84f0)
+})
+
+test('a wandering pet walks while idle: it draws its run frames and faces the way it walks', () => {
+  const step = { ...frame, g: frame.g.map((r, y) => (y === HEIGHT - 1 ? `g${r.slice(1)}` : r)) }
+  const own: Body = { ...body, palette: { d: 0x3d84f0, g: 0x44cc44 }, wander: true, frames: { run: { fps: 8, frames: [step] } } }
+  const right = compose(own, 'idle', 0, 1)
+  expect(right.px[(HEIGHT - 1) * BODY_W]).toBe(0x44cc44)
+  expect(compose(own, 'idle', 0, -1).px).toEqual(mirrored(right))
+  expect(compose({ ...own, wander: false }, 'idle', 0, 1).px[(HEIGHT - 1) * BODY_W]).toBe(-1)
+})

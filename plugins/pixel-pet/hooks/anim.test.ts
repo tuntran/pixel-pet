@@ -79,3 +79,12 @@ test('state saved mid-leap by an older version walks on from where it was', () =
   const next = step(old, { ...quiet, isWorking: true, lastToolAt: 1e9, room: 100 }, 100)
   expect([next.mode, next.x, 'leap' in next]).toEqual(['run', 20.9, false])
 })
+
+test('an idle pet that wanders walks slower than a run and turns at the room it has', () => {
+  const idle: Anim = { ...resting, x: 10, since: 0 }
+  expect(step(idle, quiet, 100).x).toBe(10)
+  const walked = step(idle, { ...quiet, wander: true }, 100)
+  expect([walked.mode, Math.round(walked.x * 100) / 100]).toEqual(['idle', 10.36])
+  expect(step({ ...idle, x: 39.9 }, { ...quiet, wander: true }, 100).dir).toBe(-1)
+  expect(step({ ...idle, mode: 'sleep', x: 10 }, { ...quiet, wander: true }, 100).x).toBe(10)
+})

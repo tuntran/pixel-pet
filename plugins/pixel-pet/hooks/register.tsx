@@ -173,9 +173,10 @@ export const register: Register = (on, options) => {
       const trail = trailWidth(minis.length)
       const room = Math.max(0, bodyColumns - BODY_W - trail - STATUS_ROOM)
       await update($, anim, a => {
-        const moved = step(a, { isWorking, activeTools, activeMode, activeTarget, lastToolAt, room }, t, settings)
-        // Minis hop on every tick, so they keep the redraw rate up while the pet idles.
-        const slowBeat = minis.length > 0 ? undefined : SLOW_BEATS[moved.mode]
+        const moved = step(a, { isWorking, activeTools, activeMode, activeTarget, lastToolAt, room, wander: body?.wander }, t, settings)
+        // Minis hop on every tick, and a wandering pet walks on every tick, so either keeps the redraw rate up.
+        const walks = moved.mode === 'idle' && body?.wander === true
+        const slowBeat = minis.length > 0 || walks ? undefined : SLOW_BEATS[moved.mode]
         return slowBeat !== undefined && moved.mode === a.mode && beat % slowBeat !== 0 ? a : moved
       })
     })

@@ -35,7 +35,7 @@ To uninstall, run `claude plugin uninstall pixel-pet@pixel-pet`.
 
 | When | The pet |
 | --- | --- |
-| Claude is idle | Breathes, blinks, and looks around. Falls asleep after the **Sleep after** time, a minute by default. |
+| Claude is idle | Breathes, blinks, and looks around; a theme with `wander` walks instead. Falls asleep after the **Sleep after** time, a minute by default. |
 | A turn starts | Bounces in place |
 | A tool call ends | Walks back and forth for 4 seconds |
 | Claude thinks longer | Looks around, with `?` and dots |

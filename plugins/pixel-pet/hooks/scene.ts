@@ -13,7 +13,7 @@ export type SceneLayout = { width: number; obstacles: Placed[]; decor: Placed[] 
 
 export const GROUND_H = 2 // pixels: one row of cells below the pet
 /** The largest ground tile, obstacle, and decor, in pixels, and how many obstacles and decor a scene keeps. */
-export const SCENE_SIZE = { ground: { w: 16, h: GROUND_H }, sky: { w: 16, h: 12 }, obstacle: { w: 8, h: 6 }, decor: { w: 16, h: HEIGHT }, items: 4 }
+export const SCENE_SIZE = { ground: { w: 16, h: GROUND_H }, sky: { w: 16, h: 12 }, obstacle: { w: 16, h: 8 }, decor: { w: 16, h: HEIGHT }, items: 4 }
 /** The least, most, and usual columns between obstacles. */
 export const EVERY = { min: 30, max: 120, normal: 40 }
 const FIRST_OBSTACLE = 24 // columns left clear, so a pet that starts at the left edge stands clear of them

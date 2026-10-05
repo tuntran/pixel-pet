@@ -7,6 +7,7 @@ import type { ToolMode } from './status'
 export const TICK_MS = 100
 const SPEED = 9 // cells per second at normal pace
 const RUN_AFTER_TOOL_MS = 4000
+const WANDER_PACE = 0.4 // a wandering pet walks at this part of the run speed
 const JUMP_YIELDS_MS = 400 // a tool call cuts the start-of-turn hop short after this long
 
 /** What the session is doing, as the hooks last saw it. */
@@ -17,6 +18,7 @@ export type Activity = {
   activeTarget: string
   lastToolAt: number
   room: number // the furthest column a running pet may reach
+  wander?: boolean // the pet walks while idle
 }
 
 /** The mode the pet holds while nothing starts or ends. */
@@ -34,7 +36,7 @@ function settle(w: Activity, t: number): Mode {
 /**
  * The pet one tick later, at time `t`. A turn starting makes it jump and a turn ending makes it cheer. A mode
  * with a fixed length (jump, cheer, error) runs out before the pet settles, sooner at a faster pace. Idle turns
- * to sleep after `sleepAfterMs`. A running pet walks and turns at `room`, past the scene's obstacles. An `a` saved
+ * to sleep after `sleepAfterMs`. A running pet, or an idle one that wanders, walks and turns at `room`, past the scene's obstacles. An `a` saved
  * by another version of the mod, with a mode this one lacks, starts over idle.
  */
 export function step(a: Anim, w: Activity, t: number, s: Pick<Settings, 'pace' | 'sleepAfterMs'> = DEFAULTS): Anim {
@@ -70,8 +72,9 @@ export function step(a: Anim, w: Activity, t: number, s: Pick<Settings, 'pace' |
     }
   }
 
-  if (mode === 'run') {
-    x += (dir * SPEED * s.pace * TICK_MS) / 1000
+  const walks = mode === 'run' || (mode === 'idle' && w.wander === true)
+  if (walks) {
+    x += (dir * SPEED * (mode === 'run' ? 1 : WANDER_PACE) * s.pace * TICK_MS) / 1000
     if (x >= w.room) {
       x = w.room
       dir = -1

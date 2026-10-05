@@ -15,7 +15,8 @@ export type Body = {
   mini: MiniColors
   miniSprite?: string[] // the pet's own mini, in its palette, in place of the drop
   props: Partial<Record<Mode, string[][] | null>> // the pet's own props: frames of rows in its palette; null for none
-  frames: Partial<Record<Mode, { fps: number; frames: BodyFrame[] }>> // the pet's own drawn frames, in place of its clip
+  frames: Partial<Record<Mode | 'stand', { fps: number; frames: BodyFrame[] }>> // the pet's own drawn frames, in place of a mode's clip; `stand` for every mode on the stand clip
+  wander?: boolean // the pet walks while idle
   eyeColors: Partial<Record<Mode, number>> // the pupils' color in a mode, in place of the pet's own
   faces: Partial<Record<Mode, string>> // the face a mode holds, by name from FACES, in place of its own sequence
   look: Look
@@ -436,10 +437,13 @@ export function compose(body: Body, mode: Mode, elapsedMs: number, dir: 1 | -1, 
   // The expressions index their sequences by time; a negative time would index past the start.
   elapsedMs = Math.max(0, elapsedMs)
   const spec = MODES[mode]
-  const own = body.frames[mode]
-  const clip = own ?? body.clips[spec.clip]
+  // A wandering pet walks while idle: it draws the run clip, and keeps the idle faces.
+  const walks = mode === 'idle' && body.wander === true
+  const drawn = walks ? 'run' : mode
+  const own = body.frames[drawn] ?? (MODES[drawn].clip === 'stand' ? body.frames.stand : undefined)
+  const clip = own ?? body.clips[MODES[drawn].clip]
   const isLoop = spec.once === undefined
-  const index = frameIndex(clip.frames.length, own ? own.fps : (spec.fps ?? clip.fps), elapsedMs, isLoop)
+  const index = frameIndex(clip.frames.length, own ? own.fps : (MODES[drawn].fps ?? clip.fps), elapsedMs, isLoop)
   const frame = clip.frames[index] as BodyFrame
   const pet = canvas(BODY_W, HEIGHT)
 
@@ -447,7 +451,7 @@ export function compose(body: Body, mode: Mode, elapsedMs: number, dir: 1 | -1, 
 
   const eyes = (EXPRESSIONS[expressionName(mode, elapsedMs, frame.e, mood, body.faces[mode])] as (t: number) => Eyes)(elapsedMs)
   // A running pet looks ahead, unless its own frames place the eyes.
-  const shift = mode === 'run' && !own ? 1 : 0
+  const shift = drawn === 'run' && !own ? 1 : 0
   const pupil = body.eyeColors[mode]
   const eye = pupil === undefined || !('K' in body.eye) ? body.eye : { ...body.eye, K: pupil }
   stamp(pet, frame.l[0] + shift, frame.l[1], eyes.l, eye)
@@ -466,8 +470,8 @@ export function compose(body: Body, mode: Mode, elapsedMs: number, dir: 1 | -1, 
     drawProp(prop, elapsedMs)
     overlay(out, prop, trail + PROP_X)
   }
-  // Running or jumping left mirrors the whole picture, so the trail stays behind the pet. Neither mode has a prop.
-  if ((mode === 'run' || mode === 'jump') && dir === -1) {
+  // Running, walking, or jumping left mirrors the whole picture, so the trail stays behind the pet. None has a prop.
+  if ((drawn === 'run' || mode === 'jump') && dir === -1) {
     mirror(out)
   }
 

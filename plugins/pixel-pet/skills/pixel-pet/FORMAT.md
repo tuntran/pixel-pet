@@ -2,7 +2,7 @@
 
 A theme is one JSON object: the pet's sprite and everything else it changes. The `preview_theme` and `set_theme` tools take it as `theme`, `get_theme` returns it, and a theme file (`<name>.theme.json`) holds the same object. Only `sprite` is required. The mod draws whatever else it gets, repairs what it can, and returns notes on what it did (see [Notes](#notes)). Unknown fields are ignored.
 
-Two example pets ship with the plugin: [`assets/slime.json`](../../assets/slime.json) faces the viewer, and [`assets/duck.json`](../../assets/duck.json) faces left, beak first. Both set only the sprite fields. [`assets/alien.json`](../../assets/alien.json) sets every field in this file: props (including `think`), `frames`, `eyeColors`, `faces`, `miniSprite`, `lines`, `lineColors`, `hud`, and `scene`.
+Two example pets ship with the plugin: [`assets/slime.json`](../../assets/slime.json) faces the viewer, and [`assets/duck.json`](../../assets/duck.json) faces left, beak first. Both set only the sprite fields. [`assets/alien.json`](../../assets/alien.json) sets every field in this file: props (including `think`), `frames`, `eyeColors`, `faces`, `wander`, `miniSprite`, `lines`, `lineColors`, `hud`, and `scene`.
 
 | Field | Required | What it is |
 | --- | --- | --- |
@@ -21,6 +21,7 @@ Two example pets ship with the plugin: [`assets/slime.json`](../../assets/slime.
 | `frames` | | `{ "<mode>": frames }`: drawings of the pet that a mode plays in place of its squashed sprite, such as legs that step or an arm raised. See [Frames](#frames). |
 | `eyeColors` | | `{ "<mode>": "#rrggbb" }`: the pupils' color in a mode, in place of `eyeColor`. See [Frames](#frames). |
 | `faces` | | `{ "<mode>": "<face>" }`: the one face a mode holds, in place of its own sequence. See [Frames](#frames). |
+| `wander` | | `true` makes the pet walk back and forth while idle, at a slower pace than its run, in place of standing still. Default `false`. |
 | `lines` | | `{ "<mode>": ["text", ...] }`: the status lines of a mode. See [Status lines](#status-lines). |
 | `lineColors` | | `{ "<mode>": "#rrggbb" }`: the status line's color in a mode. See [Status lines](#status-lines). |
 | `hud` | | The HUD's look: its frame, and each bar's label, color, and fill. See [HUD](#hud). |
@@ -133,8 +134,9 @@ A character moves parts a squash cannot: legs that step, an arm raised to salute
 
 - A frame is rows in the pet's `palette`, like the sprite, up to 27×18. One frame is a list of rows; several are a list of frames, up to 8.
 - Draw each frame as the sprite with the parts that move changed, the same width and height. The mod places a frame as it places the sprite, so the eyes and cheeks land on the same points. A frame one column wider than the sprite keeps the pet in place and reaches one column further right, where the prop starts: a rifle drawn to the frame's edge meets a `bash` prop.
-- A looping mode plays its frames at 4 a second, `run` at 8. A mode with a fixed length (`jump`, `cheer`, `error`) spreads its frames across that length and holds the last.
-- `cheer` frames keep the sparkles. A `run` frame faces right and is mirrored when the pet walks left.
+- `stand` in place of a mode draws every mode on the stand clip (`idle`, `sleep`, `read`, `search`, `edit`, `bash`, `web`, `agent`, `error`) that has no frames of its own. Stand frames hold the pet still where the stand clip breathes, so a tall feature such as hair keeps its height.
+- A looping mode plays its frames at 4 a second, `run` at 8, and `stand` at 2. A mode with a fixed length (`jump`, `cheer`, `error`) spreads its frames across that length and holds the last.
+- `cheer` frames keep the sparkles. A `run` frame faces right and is mirrored when the pet walks left. A pet with `wander` plays its `run` frames while it walks idle.
 - Frames are drawn at the theme's `scale`, and never squashed.
 
 `eyeColors` maps a mode to the pupils' color in it, such as gold while the pet prays. `faces` maps a mode to one face, by name, that it holds in place of its own sequence. The names are `open`, `blink`, `wide`, `wave`, `look`, `scan`, `wink`, `content`, `happy`, `heart`, `star`, `focus`, `curious`, `spiral`, `sleepy`, `dizzy`, `sweat`, and `tired`. Low HP or MP still shows on the face in `idle` and `think`.
@@ -204,7 +206,7 @@ Every drawing is rows in the pet's `palette`, like the sprite. Add a palette ent
 
 - `ground` is a tile up to 16×2, repeated across the band's full width in a row of its own, below the pet. The pet stands on it.
 - `sky` is one drawing up to 16×12 that stays put near the band's top right: a sun, a moon, a planet.
-- `obstacles` is a list of up to 4 drawings, each up to 8×6. They stand on the ground in turn, `every` columns apart, the first 24 columns from the left edge. A walking pet passes in front of them.
+- `obstacles` is a list of up to 4 drawings, each up to 16×8. They stand on the ground in turn, `every` columns apart, the first 24 columns from the left edge. A walking pet passes in front of them.
 - `decor` is a list of up to 4 drawings, each up to 16×18, placed at random spots clear of the obstacles. Decor sits behind the pet and is never in its way. A drawing's bottom row sits on the ground, so rows of `.` below it raise it into the sky: a star with 9 clear rows below floats 9 pixels up. Raised decor drifts left like clouds, each drawing at its own speed of a column every 1.1 to 1.9 seconds, passes in front of the sky drawing, and comes back in from the right edge. Decor on the ground stays put.
 - `every` is the columns between obstacles, from 30 to 120. Default 40.
 
@@ -229,13 +231,13 @@ The tools return a note for each repair. Each row is a repair and its cause.
 | `miniSprite` or a prop frame left out | It is not a list of text rows, or every row is empty. |
 | Bottom-left part of a drawing kept | A prop frame is past 16×18, a `frames` frame past 27×18, or `miniSprite` past 5×7. |
 | A prop or a mode's `frames` keep the first 8 | It has more than 8 frames. |
-| A scene drawing cut, or the first 4 kept | A ground tile past 16×2, a sky drawing past 16×12, an obstacle past 8×6, decor past 16×18, or more than 4 obstacles or decor. |
+| A scene drawing cut, or the first 4 kept | A ground tile past 16×2, a sky drawing past 16×12, an obstacle past 16×8, decor past 16×18, or more than 4 obstacles or decor. |
 | No scene | `scene` is not an object, or has no ground, sky, obstacles, or decor. |
 | `every` changed | It is not a number from 30 to 120. |
 | `props` left out | It is not an object. |
 | A `props` entry left out | Its key is not a mode, or is `run`. |
 | `frames`, `eyeColors`, `faces`, `lines`, `lineColors`, or `hud` left out | It is not an object. |
-| An entry of one of those left out | Its key is not a mode. |
+| An entry of one of those left out | Its key is not a mode, or `stand` in `frames`. |
 | A mode keeps the pet's eye color | `eyeColors.<mode>` is not a color. |
 | A mode keeps its own faces | `faces.<mode>` is not a face's name. |
 | A mode keeps its own lines | `lines.<mode>` holds no text. |

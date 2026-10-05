@@ -98,7 +98,7 @@ Example, a front-facing cat ([`assets/duck.json`](../../assets/duck.json) is a s
 **The scene.** Set it in the place the pet lives: grass and rocks, a moon with craters, a pond. [`assets/alien.json`](../../assets/alien.json) has a moon scene.
 
 1. Draw a `ground` tile 16 wide and 2 high, with a little texture so the repeat is not flat.
-2. Draw 2 or 3 `obstacles` with different silhouettes, 3 to 6 pixels high and narrow, so each reads as a thing on the ground.
+2. Draw 2 or 3 `obstacles` with different silhouettes, up to 16×8, so each reads as a thing on the ground.
 3. Add a few small `decor` drawings: on the ground (a tuft, a flower) or raised into the sky with clear rows below (a cloud, a star). Raised decor drifts across the sky.
 4. Draw a `sky` that suits the place, such as a sun, a moon, or a planet. It stays put near the top right, and the drifting decor passes in front of it.
 5. Leave the rest of the sky clear. A filled background turns the band into a block of color over the user's terminal.
