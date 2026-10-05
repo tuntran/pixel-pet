@@ -18,6 +18,7 @@ import { lineColor, lineWidth, statusLine, targetOf, toolMode } from './status'
 import type { ToolMode } from './status'
 
 const ROWS = HEIGHT / 2 // a cell is two pixels tall
+const LINE_ROW = 2 // the band's row the status line takes when the pet has a scene, above the tallest obstacle
 const GROUND_ROWS = GROUND_H / 2
 const STATUS_ROOM = 20 // columns kept free beside a running pet for its status line
 const USAGE_EVERY_BEATS = 20
@@ -341,11 +342,11 @@ export const register: Register = (on, options) => {
               <Raster key="pet" columns={textAt} rows={ROWS} cells={cells(0, 0, textAt, HEIGHT)} />
               {shown > 0 && (
                 <Box key="line" flexDirection="column" width={shown}>
-                  <Raster key="above" columns={shown} rows={ROWS - 2} cells={cells(textAt, 0, shown, HEIGHT - 4)} />
+                  <Raster key="above" columns={shown} rows={LINE_ROW} cells={cells(textAt, 0, shown, LINE_ROW * 2)} />
                   <Text color={lineColor(a.mode, body.look.lineColors)} bold wrap="truncate">
                     {` › ${line}`}
                   </Text>
-                  <Raster key="below" columns={shown} rows={1} cells={cells(textAt, HEIGHT - 2, shown, 2)} />
+                  <Raster key="below" columns={shown} rows={ROWS - LINE_ROW - 1} cells={cells(textAt, (LINE_ROW + 1) * 2, shown, HEIGHT - (LINE_ROW + 1) * 2)} />
                 </Box>
               )}
               {rest > 0 && <Raster key="rest" columns={rest} rows={ROWS} cells={cells(textAt + shown, 0, rest, HEIGHT)} />}

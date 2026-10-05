@@ -238,7 +238,7 @@ test('a scene keeps its ground, obstacles, and decor in the palette, and notes w
     throw new Error(read.errors.join('\n'))
   }
   expect(read.theme.scene).toEqual({ ground: ['rr'], obstacles: [['r'.repeat(16), 'r'.repeat(16)]], decor: [['zz']], every: 30 })
-  expect(read.notes.some(n => n.includes('`scene.obstacles` 1 is 18×2, past the largest, 16×8'))).toBe(true)
+  expect(read.notes.some(n => n.includes('`scene.obstacles` 1 is 18×2, past the largest, 16×12'))).toBe(true)
   expect(read.notes.some(n => n.includes('In `scene.decor` 1, "z" has no palette color'))).toBe(true)
   expect(read.notes.some(n => n.includes('`scene.every` is a number of columns from 30 to 120, so it is 30.'))).toBe(true)
 })

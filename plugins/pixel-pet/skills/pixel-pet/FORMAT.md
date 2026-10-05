@@ -206,11 +206,11 @@ Every drawing is rows in the pet's `palette`, like the sprite. Add a palette ent
 
 - `ground` is a tile up to 16×2, repeated across the band's full width in a row of its own, below the pet. The pet stands on it.
 - `sky` is one drawing up to 16×12 that stays put near the band's top right: a sun, a moon, a planet.
-- `obstacles` is a list of up to 4 drawings, each up to 16×8. They stand on the ground in turn, `every` columns apart, the first 24 columns from the left edge. A walking pet passes in front of them.
+- `obstacles` is a list of up to 4 drawings, each up to 16×12. They stand on the ground in turn, `every` columns apart, the first 24 columns from the left edge. A walking pet passes in front of them.
 - `decor` is a list of up to 4 drawings, each up to 16×18, placed at random spots clear of the obstacles. Decor sits behind the pet and is never in its way. A drawing's bottom row sits on the ground, so rows of `.` below it raise it into the sky: a star with 9 clear rows below floats 9 pixels up. Raised decor drifts left like clouds, each drawing at its own speed of a column every 1.1 to 1.9 seconds, passes in front of the sky drawing, and comes back in from the right edge. Decor on the ground stays put.
 - `every` is the columns between obstacles, from 30 to 120. Default 40.
 
-The pet walks only between tool calls. The scene's layout depends on the terminal's width; the same width always gives the same layout. The status line covers the scene behind it.
+The pet walks only between tool calls. The scene's layout depends on the terminal's width; the same width always gives the same layout. The status line sits on the band's third row, above the tallest obstacle, and covers the scene behind it.
 
 ## Notes
 
@@ -231,7 +231,7 @@ The tools return a note for each repair. Each row is a repair and its cause.
 | `miniSprite` or a prop frame left out | It is not a list of text rows, or every row is empty. |
 | Bottom-left part of a drawing kept | A prop frame is past 16×18, a `frames` frame past 27×18, or `miniSprite` past 5×7. |
 | A prop or a mode's `frames` keep the first 8 | It has more than 8 frames. |
-| A scene drawing cut, or the first 4 kept | A ground tile past 16×2, a sky drawing past 16×12, an obstacle past 16×8, decor past 16×18, or more than 4 obstacles or decor. |
+| A scene drawing cut, or the first 4 kept | A ground tile past 16×2, a sky drawing past 16×12, an obstacle past 16×12, decor past 16×18, or more than 4 obstacles or decor. |
 | No scene | `scene` is not an object, or has no ground, sky, obstacles, or decor. |
 | `every` changed | It is not a number from 30 to 120. |
 | `props` left out | It is not an object. |
