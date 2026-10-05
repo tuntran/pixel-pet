@@ -2,12 +2,10 @@ import { HEIGHT, canvas, hash, overlay, stamp } from './pixels'
 import type { Body, Canvas } from './pixels'
 
 /**
- * A theme's scene, in the pet's palette: a ground tile, a sky drawing that stays put, the obstacles a running pet
- * leaps, and decor behind it.
+ * A theme's scene, in the pet's palette: a ground tile, a sky drawing that stays put, obstacles on the ground that a
+ * walking pet passes in front of, and decor behind it.
  */
 export type Scene = { ground?: string[]; sky?: string[]; obstacles: string[][]; decor: string[][]; every: number }
-/** The columns one obstacle fills on the band: `w` of them from `x`. */
-export type Span = { x: number; w: number }
 /** A drawing at column `x`; `drift`, when set, is the milliseconds it takes to drift one column left. */
 type Placed = { x: number; rows: string[]; drift?: number }
 /** Where a scene's obstacles and decor sit on a band `width` columns wide. */
@@ -16,7 +14,7 @@ export type SceneLayout = { width: number; obstacles: Placed[]; decor: Placed[] 
 export const GROUND_H = 2 // pixels: one row of cells below the pet
 /** The largest ground tile, obstacle, and decor, in pixels, and how many obstacles and decor a scene keeps. */
 export const SCENE_SIZE = { ground: { w: 16, h: GROUND_H }, sky: { w: 16, h: 12 }, obstacle: { w: 8, h: 6 }, decor: { w: 16, h: HEIGHT }, items: 4 }
-/** The least and most columns between obstacles; the least leaves room to land a leap and take off for the next. */
+/** The least, most, and usual columns between obstacles. */
 export const EVERY = { min: 30, max: 120, normal: 40 }
 const FIRST_OBSTACLE = 24 // columns left clear, so a pet that starts at the left edge stands clear of them
 const DECOR_EVERY = 12
@@ -54,8 +52,6 @@ export function layScene(scene: Scene, width: number): SceneLayout {
 
   return { width, obstacles, decor }
 }
-
-export const obstacleSpans = (layout: SceneLayout): Span[] => layout.obstacles.map(o => ({ x: o.x, w: widthOf(o.rows) }))
 
 /**
  * The band with a scene at `ms`: the sky drawing near the top right, decor, then obstacles standing on the ground, then

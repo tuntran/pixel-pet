@@ -1,10 +1,10 @@
 import type { Anim, Mode } from '../types'
-import { TICK_MS, leapClipMs, step } from './anim'
+import { TICK_MS, step } from './anim'
 import { HUD_WINDOW_W, frameColor, hudRows, windowEdges } from './hud'
 import type { Hud } from './hud'
 import { BODY_W, FACES, HEIGHT, MODES, compose, composeFace } from './pixels'
 import type { Body, Canvas, Clip } from './pixels'
-import { GROUND_H, drawBand, layScene, obstacleSpans } from './scene'
+import { GROUND_H, drawBand, layScene } from './scene'
 import { LINES, lineColor } from './status'
 
 // When each mode plays, in the words of the README's table.
@@ -77,8 +77,11 @@ export function previewPage(body: Body, notes: string[]): string {
     const first = shots[0] as Canvas
     return { label: name, note: '', w: first.w, h: first.h, fps: FACE_FPS, frames: shots.map(encode) }
   })
-  const clips: Tile[] = (Object.keys(body.clips) as Clip[]).map(clip => {
-    const { fps, frames: list } = body.clips[clip]
+  const drawn = [
+    ...(Object.keys(body.clips) as Clip[]).map(clip => ({ label: clip, ...body.clips[clip] })),
+    ...Object.entries(body.frames).map(([mode, own]) => ({ label: `${mode} (own)`, ...own })),
+  ]
+  const clips: Tile[] = drawn.map(({ label, fps, frames: list }) => {
     const shots = list.map(f => {
       const c: Canvas = { w: BODY_W, h: HEIGHT, px: [] }
       for (const row of f.g) {
@@ -88,20 +91,20 @@ export function previewPage(body: Body, notes: string[]): string {
       }
       return c
     })
-    return { label: clip, note: `${list.length} frames at ${fps} fps`, w: BODY_W, h: HEIGHT, fps, frames: shots.map(encode) }
+    return { label, note: `${list.length} frames at ${Math.round(fps * 10) / 10} fps`, w: BODY_W, h: HEIGHT, fps, frames: shots.map(encode) }
   })
   const scenes: Tile[] = []
   if (body.scene) {
     const layout = layScene(body.scene, SCENE_W)
-    const between = { isWorking: true, activeTools: 0, activeMode: 'bash' as const, activeTarget: '', lastToolAt: Infinity, room: SCENE_W - BODY_W, obstacles: obstacleSpans(layout), trail: 0 }
+    const between = { isWorking: true, activeTools: 0, activeMode: 'bash' as const, activeTarget: '', lastToolAt: Infinity, room: SCENE_W - BODY_W }
     let a: Anim = { mode: 'run', since: 0, x: 0, dir: 1, tick: 0, target: '', working: true }
     const shots: string[] = []
     for (let t = 0; t < SCENE_MS; t += TICK_MS) {
       a = step(a, between, t)
-      const picture = a.leap ? compose(body, 'jump', leapClipMs(t - a.leap.since), a.dir) : compose(body, 'run', t - a.since, a.dir)
+      const picture = compose(body, 'run', t - a.since, a.dir)
       shots.push(encode(drawBand(body, body.scene, layout, picture, Math.round(a.x), t)))
     }
-    scenes.push({ label: 'run', note: 'Between tool calls, leaping each obstacle on the way', w: SCENE_W, h: HEIGHT + GROUND_H, fps: 1000 / TICK_MS, frames: shots })
+    scenes.push({ label: 'run', note: 'Between tool calls, walking across the band', w: SCENE_W, h: HEIGHT + GROUND_H, fps: 1000 / TICK_MS, frames: shots })
   }
   const palette = colors.map(c => `#${c.toString(16).padStart(6, '0')}`)
   const name = escapeHtml(body.name)
@@ -172,7 +175,7 @@ ${scenes.length > 0 ? `<h2>Scene</h2>\n<div class="stack">${tiles(scenes, 'scene
 <h2>HUD</h2>
 <div class="stack">${huds}</div>
 <h2>Frames</h2>
-<p>Each clip as the mod squashes and stretches the sprite, before eyes and props go on.</p>
+<p>Each clip as the mod squashes and stretches the sprite, and each mode's own drawn frames, before eyes and props go on.</p>
 <div class="grid">${tiles(clips, 'clip')}</div>
 <script>
 const PALETTE = ${JSON.stringify(palette)}

@@ -15,6 +15,9 @@ export type Body = {
   mini: MiniColors
   miniSprite?: string[] // the pet's own mini, in its palette, in place of the drop
   props: Partial<Record<Mode, string[][] | null>> // the pet's own props: frames of rows in its palette; null for none
+  frames: Partial<Record<Mode, { fps: number; frames: BodyFrame[] }>> // the pet's own drawn frames, in place of its clip
+  eyeColors: Partial<Record<Mode, number>> // the pupils' color in a mode, in place of the pet's own
+  faces: Partial<Record<Mode, string>> // the face a mode holds, by name from FACES, in place of its own sequence
   look: Look
   scene?: Scene
   clips: Record<Clip, { fps: number; frames: BodyFrame[] }>
@@ -25,10 +28,11 @@ export type Canvas = { w: number; h: number; px: number[] }
 
 const NONE = -1
 const DEFAULT = 0x01000000
-export const PROP_X = 17 // the prop's 16x20 box starts here; the body's right edge is empty from column 17
-export const BODY_W = 19
+export const BODY_W = 27
+export const PROP_X = BODY_W - 2 // the prop's box starts here and covers the body's two rightmost columns
 export const PROP_W = 16
-export const HEIGHT = 20
+export const HEIGHT = 18
+const FX_X = BODY_W - 5 // the column the question mark, zzz, and sweat draw from
 const PROP_FPS = 4 // for a pet's own props
 
 export const EYE_COLOR: Record<string, number> = { K: 0x000000, W: 0xffffff, Y: 0xffe25a, H: 0xff78aa, B: 0x78c8ff }
@@ -172,12 +176,12 @@ const EXPRESSIONS: Record<string, (t: number) => Eyes> = {
 
     return same(Math.floor(t / 1200) % 2 ? ['...', '...', 'KKK'] : BLINK, c => {
       if (q < 0.75) {
-        stamp(c, 14, Math.round(8 - q * 7), ['XXX', '..X', '.X.', 'X..', 'XXX'], { X: 0x9fd7ff })
+        stamp(c, FX_X, Math.round(7 - q * 6), ['XXX', '..X', '.X.', 'X..', 'XXX'], { X: 0x9fd7ff })
       }
     })
   },
-  dizzy: t => same(['K.K', '.K.', 'K.K'], c => rect(c, 13, 12 + (Math.floor(t / 300) % 3), 1, 2, 0x78c8ff)),
-  sweat: t => same(OPEN, c => rect(c, 13, 12 + (Math.floor(t / 500) % 2), 1, 2, 0x78c8ff)),
+  dizzy: t => same(['K.K', '.K.', 'K.K'], c => rect(c, FX_X, HEIGHT - 8 + (Math.floor(t / 300) % 3), 1, 2, 0x78c8ff)),
+  sweat: t => same(OPEN, c => rect(c, FX_X, HEIGHT - 8 + (Math.floor(t / 500) % 2), 1, 2, 0x78c8ff)),
   tired: () => same(['...', '...', 'KKK']),
 }
 
@@ -189,10 +193,13 @@ const MOOD_EYES: Record<string, string> = { worried: 'sweat', critical: 'dizzy',
 
 const RUN_EYES: Record<string, string> = { open: 'open', wide: 'wide', bar: 'blink' }
 
-export function expressionName(mode: Mode, elapsedMs: number, hint: string, mood = 'ok') {
+export function expressionName(mode: Mode, elapsedMs: number, hint: string, mood = 'ok', face?: string) {
   const spec = MODES[mode]
   if ((mode === 'idle' || mode === 'think') && MOOD_EYES[mood]) {
     return MOOD_EYES[mood] as string
+  }
+  if (face !== undefined) {
+    return face
   }
   if (mode === 'run' || mode === 'jump') {
     return RUN_EYES[hint] ?? 'open'
@@ -209,7 +216,7 @@ export function expressionName(mode: Mode, elapsedMs: number, hint: string, mood
   return 'open'
 }
 
-// ---- props: each is drawn in a 16x20 box ----
+// ---- props: each is drawn in a 16-wide box as tall as the canvas ----
 
 const hex = (s: string) => parseInt(s.slice(1), 16)
 
@@ -396,22 +403,14 @@ function mirror(c: Canvas) {
 // ---- effects on the body canvas ----
 
 const QUESTION = ['YYY', '..Y', '.Y.', '...', '.Y.']
-const DUST = hex('#8b93a1')
 const THOUGHT = hex('#c8c8c8')
 
-function effects(c: Canvas, mode: Mode, clipIndex: number, t: number, ownThink: boolean) {
+function effects(c: Canvas, mode: Mode, t: number, ownThink: boolean) {
   if (mode === 'think' && !ownThink) {
-    stamp(c, 14, 2 + (Math.floor(t / 400) % 2), QUESTION, EYE_COLOR)
+    stamp(c, FX_X, Math.floor(t / 400) % 2, QUESTION, EYE_COLOR)
     for (let k = 0; k < 1 + (Math.floor(t / 500) % 3); k++) {
-      put(c, 13 + k * 2, 9, THOUGHT)
+      put(c, FX_X - 1 + k * 2, 7, THOUGHT)
     }
-  }
-  const lands = (mode === 'run' && (clipIndex === 0 || clipIndex === 6)) || (mode === 'jump' && (clipIndex === 11 || clipIndex === 12))
-  if (lands) {
-    rect(c, 0, 19, 1, 1, DUST)
-    put(c, 1, 18, DUST)
-    rect(c, 18, 19, 1, 1, DUST)
-    put(c, 17, 18, DUST)
   }
 }
 
@@ -437,21 +436,25 @@ export function compose(body: Body, mode: Mode, elapsedMs: number, dir: 1 | -1, 
   // The expressions index their sequences by time; a negative time would index past the start.
   elapsedMs = Math.max(0, elapsedMs)
   const spec = MODES[mode]
-  const clip = body.clips[spec.clip]
+  const own = body.frames[mode]
+  const clip = own ?? body.clips[spec.clip]
   const isLoop = spec.once === undefined
-  const index = frameIndex(clip.frames.length, spec.fps ?? clip.fps, elapsedMs, isLoop)
+  const index = frameIndex(clip.frames.length, own ? own.fps : (spec.fps ?? clip.fps), elapsedMs, isLoop)
   const frame = clip.frames[index] as BodyFrame
   const pet = canvas(BODY_W, HEIGHT)
 
   stamp(pet, 0, 0, frame.g, body.palette)
 
-  const eyes = (EXPRESSIONS[expressionName(mode, elapsedMs, frame.e, mood)] as (t: number) => Eyes)(elapsedMs)
-  const shift = mode === 'run' ? 1 : 0
-  stamp(pet, frame.l[0] + shift, frame.l[1], eyes.l, body.eye)
-  stamp(pet, frame.r[0] + shift, frame.r[1], eyes.r, body.eye)
+  const eyes = (EXPRESSIONS[expressionName(mode, elapsedMs, frame.e, mood, body.faces[mode])] as (t: number) => Eyes)(elapsedMs)
+  // A running pet looks ahead, unless its own frames place the eyes.
+  const shift = mode === 'run' && !own ? 1 : 0
+  const pupil = body.eyeColors[mode]
+  const eye = pupil === undefined || !('K' in body.eye) ? body.eye : { ...body.eye, K: pupil }
+  stamp(pet, frame.l[0] + shift, frame.l[1], eyes.l, eye)
+  stamp(pet, frame.r[0] + shift, frame.r[1], eyes.r, eye)
   eyes.fx?.(pet)
   // A pet's own think prop, or none, takes the place of the question mark.
-  effects(pet, mode, index, elapsedMs, body.props.think !== undefined)
+  effects(pet, mode, elapsedMs, body.props.think !== undefined)
 
   const drawProp = mode === 'run' ? undefined : propOf(body, mode)
   const trail = trailWidth(minis.length)

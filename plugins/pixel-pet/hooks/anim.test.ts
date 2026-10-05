@@ -1,11 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Anim } from '../types'
-import { LEAP_MS, fail, step } from './anim'
+import { fail, step } from './anim'
 import type { Activity } from './anim'
 
 const resting: Anim = { mode: 'idle', since: 0, x: 0, dir: 1, tick: 0, target: '', working: false }
-const quiet: Activity = { isWorking: false, activeTools: 0, activeMode: 'bash', activeTarget: '', lastToolAt: 0, room: 40, obstacles: [], trail: 0 }
+const quiet: Activity = { isWorking: false, activeTools: 0, activeMode: 'bash', activeTarget: '', lastToolAt: 0, room: 40 }
 
 test('a turn starts with a jump, and a tool call cuts the jump short after 400 ms', () => {
   const jumping = step(resting, { ...quiet, isWorking: true }, 1000)
@@ -26,7 +26,7 @@ test('between tool calls the pet runs, then thinks after 4 s, and keeps the last
 
 test('a running pet turns at the room it has and at the left edge', () => {
   const near: Anim = { ...resting, mode: 'run', working: true, x: 39.5, dir: 1 }
-  const turned = step(near, { ...quiet, isWorking: true, lastToolAt: 0, room: 40, obstacles: [], trail: 0 }, 100)
+  const turned = step(near, { ...quiet, isWorking: true, lastToolAt: 0, room: 40 }, 100)
   expect([turned.x, turned.dir]).toEqual([40, -1])
   const left = step({ ...near, x: 0.5, dir: -1 }, { ...quiet, isWorking: true }, 100)
   expect([left.x, left.dir]).toEqual([0, 1])
@@ -68,36 +68,14 @@ test('state saved by another version starts over idle instead of failing', () =>
   expect([next.mode, next.since, next.working]).toEqual(['idle', 500, false])
 })
 
-test('a running pet leaps an obstacle just ahead and lands one column past it', () => {
-  const between = { ...quiet, isWorking: true, lastToolAt: 1e9, room: 100, obstacles: [{ x: 40, w: 4 }] }
-  const near: Anim = { ...resting, mode: 'run', working: true, x: 20 }
-  const off = step(near, between, 100)
-  expect([off.mode, off.x, off.leap]).toEqual(['run', 20, { since: 100, from: 20, to: 45 }])
-  const mid = step(off, between, 100 + LEAP_MS / 2)
-  expect(mid.x > 20 && mid.x < 45).toBe(true)
-  // It lands at 45 and runs on in the same tick.
-  const landed = step(mid, between, 100 + LEAP_MS)
-  expect([Math.floor(landed.x), landed.leap]).toEqual([45, undefined])
+test('a running pet walks on the ground and never leaves it for a leap', () => {
+  const walking: Anim = { ...resting, mode: 'run', working: true, x: 20 }
+  const next = step(walking, { ...quiet, isWorking: true, lastToolAt: 1e9, room: 100 }, 100)
+  expect([next.mode, next.x, 'leap' in next]).toEqual(['run', 20.9, false])
 })
 
-test('the leap measures from the body, past the trail of minis behind it', () => {
-  const between = { ...quiet, isWorking: true, lastToolAt: 1e9, room: 100, obstacles: [{ x: 40, w: 4 }], trail: 12 }
-  expect(step({ ...resting, mode: 'run', working: true, x: 20 }, between, 100).leap).toBe(undefined)
-  expect(step({ ...resting, mode: 'run', working: true, x: 8 }, between, 100).leap).toEqual({ since: 100, from: 8, to: 33 })
-  const left = step({ ...resting, mode: 'run', working: true, x: 46, dir: -1 }, between, 100)
-  expect(left.leap).toEqual({ since: 100, from: 46, to: 20 })
-})
-
-test('a pet turns at an obstacle it cannot land past', () => {
-  const between = { ...quiet, isWorking: true, lastToolAt: 1e9, room: 30, obstacles: [{ x: 40, w: 4 }] }
-  const turned = step({ ...resting, mode: 'run', working: true, x: 20 }, between, 100)
-  expect([turned.dir, turned.leap]).toEqual([-1, undefined])
-})
-
-test('a turn that ends mid-leap cheers once the pet lands', () => {
-  const leaping: Anim = { ...resting, mode: 'run', working: true, x: 20, leap: { since: 0, from: 20, to: 45 } }
-  const mid = step(leaping, quiet, LEAP_MS / 2)
-  expect([mid.mode, mid.working]).toEqual(['run', true])
-  const landed = step(mid, quiet, LEAP_MS)
-  expect([landed.mode, landed.x]).toEqual(['cheer', 45])
+test('state saved mid-leap by an older version walks on from where it was', () => {
+  const old = { ...resting, mode: 'run', working: true, x: 20, leap: { since: 0, from: 20, to: 45 } } as unknown as Anim
+  const next = step(old, { ...quiet, isWorking: true, lastToolAt: 1e9, room: 100 }, 100)
+  expect([next.mode, next.x, 'leap' in next]).toEqual(['run', 20.9, false])
 })

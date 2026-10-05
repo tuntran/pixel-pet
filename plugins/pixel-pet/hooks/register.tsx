@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Anim, Mode } from '../types'
-import { TICK_MS, fail, leapClipMs, step } from './anim'
+import { TICK_MS, fail, step } from './anim'
 import { BAR_W, HUD_WINDOW_W, frameColor, hudFrom, hudRows, mood, windowEdges } from './hud'
 import type { Hud } from './hud'
 import { minisOnScreen, reconcile } from './minis'
@@ -12,12 +12,12 @@ import { previewPage } from './preview'
 import { readSettings } from './settings'
 import { BODY_W, FACES, HEIGHT, MAX_MINIS, compose, crop, encodeCells, encodeSvg, trailWidth } from './pixels'
 import type { Body } from './pixels'
-import { GROUND_H, drawBand, layScene, obstacleSpans } from './scene'
+import { GROUND_H, drawBand, layScene } from './scene'
 import type { SceneLayout } from './scene'
 import { lineColor, lineWidth, statusLine, targetOf, toolMode } from './status'
 import type { ToolMode } from './status'
 
-const ROWS = 10 // a cell is two pixels tall, so the frames are 20 px high
+const ROWS = HEIGHT / 2 // a cell is two pixels tall
 const GROUND_ROWS = GROUND_H / 2
 const STATUS_ROOM = 20 // columns kept free beside a running pet for its status line
 const USAGE_EVERY_BEATS = 20
@@ -172,10 +172,8 @@ export const register: Register = (on, options) => {
 
       const trail = trailWidth(minis.length)
       const room = Math.max(0, bodyColumns - BODY_W - trail - STATUS_ROOM)
-      const scene = body && sceneLayout(body)
-      const obstacles = scene ? obstacleSpans(scene) : []
       await update($, anim, a => {
-        const moved = step(a, { isWorking, activeTools, activeMode, activeTarget, lastToolAt, room, obstacles, trail }, t, settings)
+        const moved = step(a, { isWorking, activeTools, activeMode, activeTarget, lastToolAt, room }, t, settings)
         // Minis hop on every tick, so they keep the redraw rate up while the pet idles.
         const slowBeat = minis.length > 0 ? undefined : SLOW_BEATS[moved.mode]
         return slowBeat !== undefined && moved.mode === a.mode && beat % slowBeat !== 0 ? a : moved
@@ -315,9 +313,7 @@ export const register: Register = (on, options) => {
       const now = await $.clock.now()
       const elapsed = now - a.since
       const views = minisOnScreen(minis, now)
-      // A leap is the run mode playing the jump clip, slowed, while the pet travels.
-      const drawn = a.leap ? { mode: 'jump' as const, ms: leapClipMs((now - a.leap.since) * settings.pace) } : { mode: a.mode, ms: elapsed * settings.pace }
-      const picture = compose(body, drawn.mode, drawn.ms, a.dir, hud ? mood(hud) : 'ok', views)
+      const picture = compose(body, a.mode, elapsed * settings.pace, a.dir, hud ? mood(hud) : 'ok', views)
       const extra = views.length > MAX_MINIS ? ` (+${views.length - MAX_MINIS} minis)` : ''
       const line = settings.statusLine ? statusLine(a.mode, a.since, elapsed, a.target, body.look.lines[a.mode]) + extra : ''
       if (showsError) {
@@ -382,7 +378,7 @@ export const register: Register = (on, options) => {
         return (
           <Box alignItems="flex-end">
             <Box marginLeft={Math.round(a.x)}>
-              <Svg source={encodeSvg(picture)} alt={`${body.name}, ${a.mode}`} width={picture.w * 4} height={80} />
+              <Svg source={encodeSvg(picture)} alt={`${body.name}, ${a.mode}`} width={picture.w * 4} height={HEIGHT * 4} />
             </Box>
             {line && (
               <Text color={lineColor(a.mode, body.look.lineColors)} bold>

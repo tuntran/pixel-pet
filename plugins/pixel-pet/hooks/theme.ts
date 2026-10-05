@@ -1,6 +1,6 @@
 import type { Mode } from '../types'
 import type { BarLook, HudLook } from './hud'
-import { BODY_W, EYE_COLOR, HEIGHT, MINI_SIZE, MODES, PROP_W } from './pixels'
+import { BODY_W, EYE_COLOR, FACES, HEIGHT, MINI_SIZE, MODES, PROP_W } from './pixels'
 import type { Body, BodyFrame, Look } from './pixels'
 import { EVERY, SCENE_SIZE } from './scene'
 import type { Scene } from './scene'
@@ -19,6 +19,9 @@ export type Theme = {
   mini: { top: string; body: string; edge: string }
   miniSprite?: string[]
   props: Body['props']
+  frames: Partial<Record<Mode, string[][]>> // the pet's own drawn frames by mode, in place of its clip
+  eyeColors: Partial<Record<Mode, string>>
+  faces: Partial<Record<Mode, string>>
   scene?: Scene
 } & Look
 
@@ -31,26 +34,31 @@ const SPARKLE_COLOR = 0xffe25a
 const SLIME_MINI = { top: '#9ad2ff', body: '#3d84f0', edge: '#1e3a8a' }
 const PROP_SIZE = { w: PROP_W, h: HEIGHT }
 const MAX_PROP_FRAMES = 8
+const FRAME_SIZE = { w: BODY_W, h: HEIGHT }
+const MAX_FRAMES = 8
+const FRAME_FPS: Partial<Record<Mode, number>> = { run: 8 } // a looping mode's own frames; 4 fps in the others
 const MAX_LINE = 40 // characters in a status line, so it fits beside the pet
 const MAX_LABEL = 6 // characters in a HUD label, so the HUD fits its window
 const BARS = ['hp', 'mp', 'st'] as const
 
-// Each pose squashes the sprite by sx, sy and lifts it by dy pixels, all before `scale`. The run and jump poses
-// also carry an eye hint. Tuned on the slime; any pet that fits the canvas reuses them.
-type Pose = [sx: number, sy: number, dy: number, hint?: string]
+// Each pose squashes the sprite by sx, sy, before `scale`, and stands it on the canvas's bottom row: the pet never
+// leaves the ground. The run and jump poses also carry an eye hint. Tuned on the slime; any pet that fits the canvas
+// reuses them.
+type Pose = [sx: number, sy: number, hint?: string]
 const STAND: Pose[] = Array.from({ length: 16 }, (_, i) => {
   const s = (1 - Math.cos((2 * Math.PI * i) / 16)) / 2
-  return [1 + 0.06 * s, 1 - 0.09 * s, 0]
+  return [1 + 0.06 * s, 1 - 0.09 * s]
 })
-const RUN: Pose[] = [[1.18, 0.74, 0, 'open'], [0.86, 1.22, 1, 'wide'], [0.9, 1.15, 4, 'wide'], [0.95, 1.05, 6, 'open'], [0.92, 1.12, 4, 'open'], [0.9, 1.18, 1, 'open'], [1.22, 0.7, 0, 'bar'], [1.08, 0.9, 0, 'open']]
-const JUMP: Pose[] = [[1.15, 0.8, 0, 'open'], [1.22, 0.7, 0, 'bar'], [0.85, 1.25, 2, 'wide'], [0.88, 1.2, 5, 'wide'], [0.92, 1.12, 8, 'wide'], [0.96, 1.04, 9, 'open'], [1, 1, 9, 'open'],
-  [0.96, 1.04, 8, 'open'], [0.92, 1.1, 6, 'open'], [0.9, 1.15, 3, 'open'], [0.9, 1.2, 1, 'open'], [1.25, 0.68, 0, 'bar'], [1.12, 0.85, 0, 'bar'], [1.04, 0.95, 0, 'open']]
+const STEP: Pose[] = [[1.04, 0.95, 'open'], [1, 1, 'open'], [0.98, 1.03, 'open'], [1, 1, 'open']]
+const RUN: Pose[] = [...STEP, ...STEP]
+const JUMP: Pose[] = [[1.1, 0.9, 'open'], [1.12, 0.86, 'bar'], [0.94, 1.06, 'wide'], [0.96, 1.08, 'wide'], [0.98, 1.04, 'open'], [1, 1, 'open'], [1.04, 0.96, 'open'],
+  [1, 1, 'open'], [0.98, 1.03, 'open'], [1, 1, 'open'], [1.06, 0.94, 'bar'], [1.03, 0.97, 'open'], [1, 1, 'open'], [1, 1, 'open']]
 const THINK: Pose[] = Array.from({ length: 12 }, (_, i) => {
   const wobble = 1 + 0.03 * Math.sin((2 * Math.PI * i) / 6)
-  return [wobble, 2 - wobble, 0]
+  return [wobble, 2 - wobble]
 })
-const CHEER: Pose[] = [[1, 1, 0], [1.18, 0.8, 0], [0.9, 1.18, 2], [0.95, 1.08, 4], [0.98, 1.02, 4], [0.92, 1.12, 2], [1.2, 0.76, 0], [0.88, 1.2, 2], [0.95, 1.08, 4],
-  [0.98, 1.02, 4], [0.92, 1.12, 2], [1.2, 0.76, 0], [0.88, 1.2, 2], [0.95, 1.08, 4], [0.98, 1.02, 4], [0.92, 1.12, 2], [1.2, 0.76, 0], [1, 1, 0]]
+const BOUNCE: Pose[] = [[1.12, 0.86], [0.94, 1.08], [0.97, 1.04], [1, 1], [0.95, 1.06]]
+const CHEER: Pose[] = [[1, 1], ...BOUNCE, ...BOUNCE, ...BOUNCE, [1.12, 0.86], [1, 1]]
 const POSES = [...STAND, ...RUN, ...JUMP, ...THINK, ...CHEER]
 
 function sparkle(x: number, y: number, isBig: boolean): [number, number][] {
@@ -58,7 +66,7 @@ function sparkle(x: number, y: number, isBig: boolean): [number, number][] {
 }
 
 const cheerSparkles = (i: number) =>
-  i % 3 ? [...sparkle(2, 8, i % 2 === 0), ...sparkle(16, 6, i % 2 === 1)] : [...sparkle(3, 6, true), ...sparkle(15, 9, false)]
+  i % 3 ? [...sparkle(2, 6, i % 2 === 0), ...sparkle(BODY_W - 3, 4, i % 2 === 1)] : [...sparkle(3, 4, true), ...sparkle(BODY_W - 4, 7, false)]
 
 // Round half to even. The frames theme.test.ts pins depend on it.
 function roundHalfEven(v: number) {
@@ -70,7 +78,7 @@ function roundHalfEven(v: number) {
 export function maxSize(scale: number) {
   return {
     w: Math.floor(Math.min(...POSES.map(([sx]) => BODY_W / (sx * scale))) + 1e-9),
-    h: Math.floor(Math.min(...POSES.map(([, sy, dy]) => (HEIGHT / scale - dy) / sy)) + 1e-9),
+    h: Math.floor(Math.min(...POSES.map(([, sy]) => HEIGHT / (sy * scale))) + 1e-9),
   }
 }
 
@@ -92,7 +100,7 @@ function color(v: unknown) {
 
 /** The largest scale, up to `scale`, at which a w×h sprite fits the canvas in every pose. */
 function fitScale(w: number, h: number, scale: number) {
-  const fits = Math.min(scale, ...POSES.map(([sx, sy, dy]) => Math.min(BODY_W / (sx * w), HEIGHT / (dy + sy * h))))
+  const fits = Math.min(scale, ...POSES.map(([sx, sy]) => Math.min(BODY_W / (sx * w), HEIGHT / (sy * h))))
 
   return fits < scale ? Math.floor(fits * 100) / 100 : scale
 }
@@ -157,6 +165,21 @@ function readProps(v: unknown, palette: Record<string, string>, notes: string[])
   return props
 }
 
+/** The pet's own drawn frames by mode: each a list of up to MAX_FRAMES frames of rows, or one frame. */
+function readFrames(v: unknown, palette: Record<string, string>, notes: string[]) {
+  return byMode(v, 'frames', (value, mode) => {
+    const list = Array.isArray(value) && value.length > 0 && value.every(Array.isArray) ? value : [value]
+    if (list.length > MAX_FRAMES) {
+      notes.push(`\`frames.${mode}\` keeps its first ${MAX_FRAMES} frames.`)
+    }
+    const kept = list
+      .slice(0, MAX_FRAMES)
+      .map((f, i) => paletteRows(f, FRAME_SIZE, palette, list.length > 1 ? `frame ${i + 1} of \`frames.${mode}\`` : `\`frames.${mode}\``, notes))
+      .filter((f): f is string[] => f !== undefined)
+    return kept.length > 0 ? kept : undefined
+  }, notes)
+}
+
 /** Status lines or line colors by mode, each value checked by `read`. */
 function byMode<T>(v: unknown, field: string, read: (value: unknown, mode: string) => T | undefined, notes: string[]) {
   const out: Partial<Record<Mode, T>> = {}
@@ -195,11 +218,21 @@ function readLines(v: unknown, notes: string[]) {
   }, notes)
 }
 
-function readLineColors(v: unknown, notes: string[]) {
-  return byMode(v, 'lineColors', (value, mode) => {
+function readFaces(v: unknown, notes: string[]) {
+  return byMode(v, 'faces', (value, mode) => {
+    if (typeof value === 'string' && FACES.includes(value)) {
+      return value
+    }
+    notes.push(`\`faces.${mode}\`, ${JSON.stringify(value)}, is not one of the faces (${FACES.join(', ')}), so the ${mode} mode keeps its own.`)
+    return undefined
+  }, notes)
+}
+
+function readColors(v: unknown, field: string, keeps: string, notes: string[]) {
+  return byMode(v, field, (value, mode) => {
     const c = color(value)
     if (c === undefined) {
-      notes.push(`\`lineColors.${mode}\`, ${JSON.stringify(value)}, is not "#rrggbb", so the ${mode} mode keeps its own color.`)
+      notes.push(`\`${field}.${mode}\`, ${JSON.stringify(value)}, is not "#rrggbb", so the ${mode} mode keeps ${keeps}.`)
     }
     return c
   }, notes)
@@ -394,8 +427,11 @@ export function readTheme(v: unknown): { theme: Theme; notes: string[]; errors?:
       mini: hasMini ? (mini as Theme['mini']) : SLIME_MINI,
       miniSprite,
       props: readProps(v.props, palette, notes),
+      frames: readFrames(v.frames, palette, notes),
+      eyeColors: readColors(v.eyeColors, 'eyeColors', 'the pet\'s eye color', notes),
+      faces: readFaces(v.faces, notes),
       lines: readLines(v.lines, notes),
-      lineColors: readLineColors(v.lineColors, notes),
+      lineColors: readColors(v.lineColors, 'lineColors', 'its own color', notes),
       hud: readHud(v.hud, notes),
       scene: readScene(v.scene, palette, notes),
     },
@@ -405,13 +441,13 @@ export function readTheme(v: unknown): { theme: Theme; notes: string[]; errors?:
 
 const colorOf = (color: string) => parseInt(color.slice(1), 16)
 
-function poseFrame(theme: Theme, pose: Pose, extra: [number, number][] = []): BodyFrame {
-  const [sx, sy, dy] = [pose[0] * theme.scale, pose[1] * theme.scale, pose[2] * theme.scale]
-  const sw = (theme.sprite[0] as string).length
-  const sh = theme.sprite.length
+function poseFrame(theme: Theme, pose: Pose, extra: [number, number][] = [], sprite = theme.sprite): BodyFrame {
+  const [sx, sy] = [pose[0] * theme.scale, pose[1] * theme.scale]
+  const sw = (sprite[0] as string).length
+  const sh = sprite.length
   const cx = sw / 2
   const tcx = sw % 2 ? BODY_W / 2 : Math.floor(BODY_W / 2) // whole-pixel aligned, so at scale 1 a resting sprite is copied, not resampled
-  const tb = HEIGHT - dy
+  const tb = HEIGHT
   const g = Array.from({ length: HEIGHT }, () => new Array<string>(BODY_W).fill('.'))
   const put = (x: number, y: number, ch: string) => {
     const [px, py] = [roundHalfEven(x), roundHalfEven(y)]
@@ -430,7 +466,7 @@ function poseFrame(theme: Theme, pose: Pose, extra: [number, number][] = []): Bo
       for (let v = Math.max(0, Math.floor(v0)); v < Math.min(sh, Math.ceil(v1)); v++) {
         for (let u = Math.max(0, Math.floor(u0)); u < Math.min(sw, Math.ceil(u1)); u++) {
           const area = (Math.min(u1, u + 1) - Math.max(u0, u)) * (Math.min(v1, v + 1) - Math.max(v0, v))
-          const ch = (theme.sprite[v] as string)[u] as string
+          const ch = (sprite[v] as string)[u] as string
           if (area > 0 && ch !== '.') {
             cover.set(ch, (cover.get(ch) ?? 0) + area * (ch === theme.outline ? 1.6 : 1))
           }
@@ -462,7 +498,7 @@ function poseFrame(theme: Theme, pose: Pose, extra: [number, number][] = []): Bo
     return [Math.floor(px - 1.5 + 0.5), Math.floor(py - 0.5 + 0.5) - 1] as [number, number]
   }) as [[number, number], [number, number]]
 
-  return { g: g.map(row => row.join('')), l, r, e: pose[3] ?? '' }
+  return { g: g.map(row => row.join('')), l, r, e: pose[2] ?? '' }
 }
 
 /** The pet's frames for every clip, with its colors as the drawing code reads them. */
@@ -484,6 +520,15 @@ export function animate(theme: Theme): Body {
     mini: { top: colorOf(theme.mini.top), body: colorOf(theme.mini.body), edge: colorOf(theme.mini.edge) },
     miniSprite: theme.miniSprite,
     props: theme.props,
+    frames: Object.fromEntries(
+      Object.entries(theme.frames).map(([mode, list]) => {
+        const once = MODES[mode as Mode].once
+        const fps = once === undefined ? (FRAME_FPS[mode as Mode] ?? 4) : list.length / (once / 1000)
+        return [mode, { fps, frames: list.map((rows, i) => poseFrame(theme, [1, 1], mode === 'cheer' ? cheerSparkles(i) : [], rows)) }]
+      }),
+    ),
+    eyeColors: Object.fromEntries(Object.entries(theme.eyeColors).map(([mode, c]) => [mode, colorOf(c)])),
+    faces: theme.faces,
     look: { lines: theme.lines, lineColors: theme.lineColors, hud: theme.hud },
     scene: theme.scene,
     clips: {

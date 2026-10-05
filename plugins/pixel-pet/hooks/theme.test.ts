@@ -37,21 +37,21 @@ const themeOf = (v: unknown) => {
 test('the slime animates to the frames it was first drawn with', () => {
   const body = animate(themeOf(slime))
   const rest = body.clips.stand.frames[0]!
-  expect(rest.g.slice(10)).toEqual([
-    '...................',
-    '.........a.........',
-    '........aha........',
-    '......aagfdaa......',
-    '.....aagffddaa.....',
-    '....ahhgffffdda....',
-    '...ag*gfffffd*da...',
-    '...affffffffddca...',
-    '...accddddddddca...',
-    '....aaaaaaaaaaa....',
+  expect(rest.g.slice(8)).toEqual([
+    '...........................',
+    '.............a.............',
+    '............aha............',
+    '..........aagfdaa..........',
+    '.........aagffddaa.........',
+    '........ahhgffffdda........',
+    '.......ag*gfffffd*da.......',
+    '.......affffffffddca.......',
+    '.......accddddddddca.......',
+    '........aaaaaaaaaaa........',
   ])
-  expect([rest.l, rest.r]).toEqual([[6, 14], [10, 14]])
-  expect(body.clips.jump.frames[6]!.g[4]).toBe('.........a.........')
-  expect(body.clips.jump.frames[6]!.l).toEqual([6, 7])
+  expect([rest.l, rest.r]).toEqual([[10, 12], [14, 12]])
+  expect(body.clips.jump.frames[3]!.g[8]).toBe('.............a.............')
+  expect(body.clips.jump.frames[3]!.l).toEqual([10, 12])
   expect(Object.fromEntries(Object.entries(body.clips).map(([k, c]) => [k, [c.fps, c.frames.length]]))).toEqual({
     stand: [8, 16], run: [12, 8], jump: [12, 14], think: [6, 12], cheer: [10, 18],
   })
@@ -66,8 +66,8 @@ test('a pet fills in its defaults', () => {
 
 test('the resting frame marks the pupils with @ and starts at the first row in use', () => {
   const rows = restingFrame(animate(themeOf(slime))).split('\n')
-  expect(rows[0]).toBe('.........a.........')
-  expect(rows[5]).toBe('...ag*@@ff@@d*da...')
+  expect(rows[0]).toBe('.............a.............')
+  expect(rows[5]).toBe('.......ag*@@ff@@d*da.......')
 })
 
 test('at scale 1 the resting frame is the sprite itself, at an even width or an odd one', () => {
@@ -80,13 +80,22 @@ test('at scale 1 the resting frame is the sprite itself, at an even width or an 
 
 
 test('a sprite too big for scale 1 is drawn smaller, with a note', () => {
-  expect(maxSize(1)).toEqual({ w: 15, h: 10 })
-  const read = readTheme({ ...slime, scale: 1 })
-  expect(read.errors).toBeUndefined()
-  expect(read.errors ? 0 : read.theme.scale).toBe(0.89)
+  expect(maxSize(1)).toEqual({ w: 24, h: 16 })
+  expect(themeOf({ ...slime, scale: 1 }).scale).toBe(1)
+  const read = readTheme({ sprite: Array.from({ length: 11 }, () => 'a'.repeat(30)), palette: { a: '#123456' } })
+  expect(read.errors ? 0 : read.theme.scale).toBe(0.8)
   expect(read.errors ? [] : read.notes).toEqual([
-    'A 17×11 sprite is drawn at scale 0.89 to fit every pose. At scale 1 the largest is 15×10, and a smaller scale blurs detail.',
+    'A 30×11 sprite is drawn at scale 0.8 to fit every pose. At scale 1 the largest is 24×16, and a smaller scale blurs detail.',
   ])
+})
+
+test('every pose stands on the bottom row: no pose lifts the pet', () => {
+  const body = animate(themeOf(slime))
+  for (const clip of Object.values(body.clips)) {
+    for (const f of clip.frames) {
+      expect(/[^.+]/.test(f.g[f.g.length - 1] as string)).toBe(true)
+    }
+  }
 })
 
 test('only a pet with no sprite is refused; the rest is repaired and noted', () => {
@@ -126,7 +135,7 @@ test('a pet with no eyes draws no faces, and its resting frame marks no pupils',
 })
 
 test('a pet with fields this version does not know still reads', () => {
-  const read = readTheme({ ...slime, frames: { jump: [] }, author: 'someone' })
+  const read = readTheme({ ...slime, wings: 2, author: 'someone' })
   expect(read.errors).toBeUndefined()
   expect(read.errors ? [] : read.notes).toEqual([])
 })
@@ -153,6 +162,35 @@ test('a pet carries its own props, mini, lines, line colors, and HUD look', () =
   expect(animate(read.theme).look.hud.st).toBe(false)
 })
 
+test('a pet carries its own frames by mode, and an eye color by mode', () => {
+  const read = readTheme({
+    sprite: ['aaa'],
+    palette: { a: '#44cc44', y: '#ffe25a' },
+    eyes: [[0, 1], [4, 1]],
+    frames: { run: [['aaa', 'a.a'], ['aaa', '.a.']], jump: ['yay'], fly: [['a']], bash: Array.from({ length: 9 }, () => ['a']) },
+    eyeColors: { think: '#fc0', read: 'gold' },
+    faces: { bash: 'focus', cheer: 'smug' },
+  })
+  if (read.errors) {
+    throw new Error(read.errors.join('\n'))
+  }
+  expect(read.theme.frames).toEqual({ run: [['aaa', 'a.a'], ['aaa', '.a.']], jump: [['yay']], bash: Array.from({ length: 8 }, () => ['a']) })
+  expect(read.theme.eyeColors).toEqual({ think: '#ffcc00' })
+  expect(read.theme.faces).toEqual({ bash: 'focus' })
+  expect(read.notes.filter(n => !n.includes('eye at'))).toEqual([
+    '"fly" in `frames` is not a mode, so it is left out.',
+    '`frames.bash` keeps its first 8 frames.',
+    '`eyeColors.read`, "gold", is not "#rrggbb", so the read mode keeps the pet\'s eye color.',
+    expect.stringContaining('`faces.cheer`, "smug", is not one of the faces'),
+  ])
+  const body = animate(read.theme)
+  expect(body.frames.run?.frames).toHaveLength(2)
+  expect([body.frames.run?.fps, body.frames.jump?.fps]).toEqual([8, 1 / (14 / 12)])
+  expect(body.frames.run?.frames[1]?.g.at(-1)).toBe('.............a.............')
+  expect(body.eyeColors).toEqual({ think: 0xffcc00 })
+  expect(body.faces).toEqual({ bash: 'focus' })
+})
+
 test('a look the mod cannot use is left out or cut, with a note', () => {
   const read = readTheme({
     sprite: ['aaa'],
@@ -166,7 +204,7 @@ test('a look the mod cannot use is left out or cut, with a note', () => {
   if (read.errors) {
     throw new Error(read.errors.join('\n'))
   }
-  expect(read.theme.props.edit?.[0]).toHaveLength(20)
+  expect(read.theme.props.edit?.[0]).toHaveLength(18)
   expect(read.theme.props.edit?.[0]?.[0]).toHaveLength(16)
   expect(read.theme.miniSprite).toEqual(['aaaaa'])
   expect(read.theme.lines).toEqual({ think: ['x'.repeat(40)] })
@@ -176,7 +214,7 @@ test('a look the mod cannot use is left out or cut, with a note', () => {
     '"run" in `props` is not a mode that can hold a prop, so it is left out.',
     '"fly" in `props` is not a mode that can hold a prop, so it is left out.',
     'the read prop is not a list of text rows, so it is left out.',
-    'the edit prop is 18×22, past the largest, 16×20, so its bottom-left part is kept.',
+    'the edit prop is 18×22, past the largest, 16×18, so its bottom-left part is kept.',
     '`lines.read` has no text, so the read mode keeps its own lines.',
     'Lines in `lines.think` are cut to 40 characters.',
     '`lineColors.read`, "green", is not "#rrggbb", so the read mode keeps its own color.',

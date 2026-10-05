@@ -1,19 +1,22 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EYE_COLOR, MAX_MINIS, MODES, compose, crop, encodeCells, expressionName, frameIndex } from './pixels'
+import { BODY_W, EYE_COLOR, HEIGHT, MAX_MINIS, MODES, PROP_W, PROP_X, compose, crop, encodeCells, expressionName, frameIndex } from './pixels'
 import type { Body, Canvas } from './pixels'
 
-// A stub pet: a solid block with the eye boxes where the slime's first stand frame has them.
-const frame = { g: Array.from({ length: 20 }, (_, y) => (y >= 12 ? '..dddddddddddddd...' : '...................')), l: [5, 13], r: [10, 13], e: 'open' } as Body['clips']['stand']['frames'][number]
+// A stub pet: a solid block in the bottom rows, with an eye box on each side of it.
+const frame = { g: Array.from({ length: HEIGHT }, (_, y) => (y >= HEIGHT - 8 ? `..${'d'.repeat(BODY_W - 5)}...` : '.'.repeat(BODY_W))), l: [5, HEIGHT - 7], r: [10, HEIGHT - 7], e: 'open' } as Body['clips']['stand']['frames'][number]
 const clip = { fps: 8, frames: [frame, frame] }
 const body: Body = {
   name: 'block',
-  w: 19,
-  h: 20,
+  w: BODY_W,
+  h: HEIGHT,
   palette: { d: 0x3d84f0 },
   eye: EYE_COLOR,
   mini: { top: 0x9ad2ff, body: 0x3d84f0, edge: 0x1e3a8a },
   props: {},
+  frames: {},
+  eyeColors: {},
+  faces: {},
   look: { lines: {}, lineColors: {}, hud: {} },
   clips: { stand: clip, run: clip, jump: clip, think: clip, cheer: clip },
 }
@@ -37,14 +40,16 @@ test('an eye sequence loops by its own lengths', () => {
   expect(expressionName('run', 0, 'bar')).toBe('blink')
   expect(expressionName('idle', 0, '', 'critical')).toBe('dizzy')
   expect(expressionName('edit', 0, '', 'critical')).toBe('focus')
+  expect(expressionName('bash', 0, '', 'ok', 'happy')).toBe('happy')
+  expect(expressionName('idle', 0, '', 'critical', 'happy')).toBe('dizzy')
 })
 
 test('every mode draws a canvas of its size, with a prop only where the mode has one', () => {
   for (const mode of Object.keys(MODES) as (keyof typeof MODES)[]) {
     for (const t of [0, 500, 1300, 2900]) {
       const c = compose(body, mode, t, 1)
-      expect(c.h).toBe(20)
-      expect(c.w).toBe(MODES[mode].prop ? 33 : 19)
+      expect(c.h).toBe(HEIGHT)
+      expect(c.w).toBe(MODES[mode].prop ? PROP_X + PROP_W : BODY_W)
       expect(c.px.length).toBe(c.w * c.h)
     }
   }
@@ -58,9 +63,9 @@ test('a running pet facing left is the mirror of one facing right', () => {
 
 test('each mini widens the picture by its trail, up to MAX_MINIS', () => {
   const mini = { age: 1000 }
-  expect(compose(body, 'idle', 0, 1, 'ok', [mini]).w).toBe(19 + 6)
-  expect(compose(body, 'read', 0, 1, 'ok', [mini, mini]).w).toBe(33 + 12)
-  expect(compose(body, 'idle', 0, 1, 'ok', Array.from({ length: MAX_MINIS + 3 }, () => mini)).w).toBe(19 + MAX_MINIS * 6)
+  expect(compose(body, 'idle', 0, 1, 'ok', [mini]).w).toBe(BODY_W + 6)
+  expect(compose(body, 'read', 0, 1, 'ok', [mini, mini]).w).toBe(PROP_X + PROP_W + 12)
+  expect(compose(body, 'idle', 0, 1, 'ok', Array.from({ length: MAX_MINIS + 3 }, () => mini)).w).toBe(BODY_W + MAX_MINIS * 6)
 })
 
 test('the trail stays behind the pet: left when running right, right when running left', () => {
@@ -91,13 +96,14 @@ test("a pet's own prop replaces the mod's, plays its frames, and null leaves the
   const own: Body = { ...body, props: { read: [['dd'], ['..', 'dd']], bash: null, think: [['d']] } }
   const first = compose(own, 'read', 0, 1)
   const second = compose(own, 'read', 250, 1)
-  expect(first.w).toBe(33)
-  expect(first.px[19 * 33 + 17]).toBe(0x3d84f0)
-  expect(first.px[18 * 33 + 17]).toBe(-1)
-  expect(second.px[18 * 33 + 17]).toBe(-1)
-  expect(second.px[19 * 33 + 17]).toBe(0x3d84f0)
-  expect(compose(own, 'bash', 0, 1).w).toBe(19)
-  expect(compose(own, 'think', 0, 1).w).toBe(33)
+  const w = PROP_X + PROP_W
+  const at = (c: Canvas, y: number) => c.px[y * w + PROP_X + 2]
+  expect(first.w).toBe(w)
+  expect([at(first, HEIGHT - 1), at(first, HEIGHT - 2)]).toEqual([-1, -1])
+  expect([at(second, HEIGHT - 1), at(second, HEIGHT - 2)]).toEqual([-1, -1])
+  expect(first.px[(HEIGHT - 1) * w + PROP_X + 1]).toBe(0x3d84f0)
+  expect(compose(own, 'bash', 0, 1).w).toBe(BODY_W)
+  expect(compose(own, 'think', 0, 1).w).toBe(w)
   expect(compose(body, 'think', 0, 1).px).toContain(0xffe25a)
   expect(compose(own, 'think', 0, 1).px).not.toContain(0xffe25a)
 })
@@ -118,4 +124,21 @@ test('crop takes a part of a canvas', () => {
 
 test('a jump to the left mirrors the picture, as a run does', () => {
   expect(compose(body, 'jump', 100, -1).px).toEqual(mirrored(compose(body, 'jump', 100, 1)))
+})
+
+test("a mode's own frames replace its clip, and its eye color recolors the pupils", () => {
+  const blank = '.'.repeat(BODY_W)
+  const own: Body = {
+    ...body,
+    palette: { d: 0x3d84f0, g: 0x44cc44 },
+    frames: { bash: { fps: 4, frames: [{ ...frame, g: frame.g.map(r => r.replace(/d/g, 'g')) }, { ...frame, g: Array.from({ length: HEIGHT }, () => blank) }] } },
+    eyeColors: { bash: 0xffd700 },
+  }
+  const first = compose(own, 'bash', 0, 1)
+  expect(first.px).toContain(0x44cc44)
+  expect(first.px).not.toContain(0x3d84f0)
+  expect(first.px).toContain(0xffd700)
+  expect(compose(own, 'bash', 250, 1).px).not.toContain(0x44cc44)
+  expect(compose(own, 'idle', 0, 1).px).toContain(0x3d84f0)
+  expect(compose(own, 'idle', 0, 1).px).not.toContain(0xffd700)
 })

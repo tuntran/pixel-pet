@@ -127,6 +127,64 @@
       ]
     ]
   },
+  "frames": {
+    "jump": [
+      [
+        "..y.........y..",
+        "...a.......a...",
+        "....aaaaaaa....",
+        "..aagggggggaa..",
+        ".aggggggggggga.",
+        ".aggggggggggga.",
+        "aggggggggggggga",
+        "aggggggmgggggga",
+        ".asssssssssssa.",
+        "..aaaaaaaaaaa.."
+      ],
+      [
+        ".y...........y.",
+        "..a.........a..",
+        "....aaaaaaa....",
+        "..aagggggggaa..",
+        ".aggggggggggga.",
+        ".aggggggggggga.",
+        "aggggggggggggga",
+        "aggggggmgggggga",
+        ".asssssssssssa.",
+        "..aaaaaaaaaaa.."
+      ],
+      [
+        "..y.........y..",
+        "...a.......a...",
+        "....aaaaaaa....",
+        "..aagggggggaa..",
+        ".aggggggggggga.",
+        ".aggggggggggga.",
+        "aggggggggggggga",
+        "aggggggmgggggga",
+        ".asssssssssssa.",
+        "..aaaaaaaaaaa.."
+      ],
+      [
+        ".y...........y.",
+        "..a.........a..",
+        "....aaaaaaa....",
+        "..aagggggggaa..",
+        ".aggggggggggga.",
+        ".aggggggggggga.",
+        "aggggggggggggga",
+        "aggggggmgggggga",
+        ".asssssssssssa.",
+        "..aaaaaaaaaaa.."
+      ]
+    ]
+  },
+  "eyeColors": {
+    "think": "#9fe3ff"
+  },
+  "faces": {
+    "bash": "focus"
+  },
   "lines": {
     "idle": [
       "scanning for life forms",

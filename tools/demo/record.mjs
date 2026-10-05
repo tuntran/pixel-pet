@@ -17,7 +17,7 @@ const { TICK_MS, fail, step } = await hook('anim')
 const { BAR_W, HUD_WINDOW_W, frameColor, hudRows, mood, windowEdges } = await hook('hud')
 const { minisOnScreen } = await hook('minis')
 const { animate, readTheme } = await hook('theme')
-const { BODY_W, MAX_MINIS, compose, encodeCells, trailWidth } = await hook('pixels')
+const { BODY_W, HEIGHT, MAX_MINIS, compose, encodeCells, trailWidth } = await hook('pixels')
 const { lineColor, statusLine, targetOf, toolMode } = await hook('status')
 
 const out = process.argv[2] ?? fileURLToPath(new URL('../../docs/images/demo.gif', import.meta.url))
@@ -63,7 +63,7 @@ function hudAt(t) {
 // ---- the screen, as register.tsx lays it out ----
 
 const COLS = 86
-const ROWS = 10 // the band's height in cells
+const ROWS = HEIGHT / 2 // the band's height in cells
 const STATUS_ROOM = 20
 const LEAVE_MS = 1500
 const SLOW_BEATS = { idle: 2, sleep: 4 }
@@ -159,8 +159,6 @@ function play() {
       activeTarget: latest ? targetOf(latest.tool, latest.input) : '',
       lastToolAt: running.length ? t : (ended.at(-1)?.at[1] ?? -Infinity),
       room: Math.max(0, COLS - BODY_W - trailWidth(minisAt(t).length) - STATUS_ROOM),
-      obstacles: [], // the slime has no scene
-      trail: trailWidth(minisAt(t).length),
     }
     const moved = step(a, activity, t)
     const slowBeat = minisAt(t).length > 0 ? undefined : SLOW_BEATS[moved.mode]

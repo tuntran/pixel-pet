@@ -1,6 +1,6 @@
 ---
 name: pixel-pet
-description: Customize the pixel-pet theme. Draw, recolor, or edit the mascot, change its props (the thinking question mark, the web globe, the book, the terminal), minis, status line text and colors, the HUD's look, and the scene (a background, ground, and obstacles the pet jumps). Also sets speed, sleep, HUD on or off, status line on or off, naming files, and minis, loads or shares a theme file, and brings the slime back.
+description: Customize the pixel-pet theme. Draw, recolor, or edit the mascot, change its props (the thinking question mark, the web globe, the book, the terminal), minis, status line text and colors, the HUD's look, and the scene (a background, ground, and obstacles the pet walks past). Also sets speed, sleep, HUD on or off, status line on or off, naming files, and minis, loads or shares a theme file, and brings the slime back.
 ---
 
 # Pixel pet
@@ -23,10 +23,11 @@ Name the parts the request touches:
 | --- | --- | --- |
 | A new mascot, a recolor, new eyes or cheeks | the sprite, `palette`, `eyes`, `cheeks` | [Fields](FORMAT.md#theme-format), [Size](FORMAT.md#size), [Eyes](FORMAT.md#eyes) |
 | An effect in a mode: the book, the globe, the terminal, the question mark | `props` | [Props](FORMAT.md#props), [Modes](FORMAT.md#modes) |
+| A pose a squash cannot make: legs that step, an arm raised, a mode's own face or eye color | `frames`, `faces`, `eyeColors` | [Frames](FORMAT.md#frames) |
 | What a running subagent looks like | `mini`, `miniSprite` | [Minis](FORMAT.md#minis) |
 | The words beside the pet, or their color | `lines`, `lineColors` | [Status lines](FORMAT.md#status-lines) |
 | The HUD's frame, labels, colors, fills, or a hidden bar | `hud` | [HUD](FORMAT.md#hud) |
-| A background, ground, or obstacles the pet jumps | `scene` | [Scene](FORMAT.md#scene) |
+| A background, ground, or obstacles the pet walks past | `scene` | [Scene](FORMAT.md#scene) |
 | Speed, sleep, the HUD or status line on or off, naming files, minis on or off | settings, not the theme | [Settings](#settings) |
 
 A whole style ("a pirate pet") touches the sprite, the lines, the HUD, and the scene at once. Change each and say what you changed.
@@ -58,7 +59,8 @@ A request for one part keeps every other field of the starting theme as it is.
 3. Spend pixels on what makes the pet itself: ears, a beak, a tail. Make each at least 2 pixels thick, so a squash keeps it ([why](FORMAT.md#how-the-pet-moves)).
 4. Leave a flat patch of base color for each eye and set `eyes`, using the box geometry in [FORMAT.md](FORMAT.md#eyes).
 5. Add `cheeks` a pixel below or beside the eye boxes when they suit the pet.
-6. Set `mini` from the pet's light, base, and outline colors.
+6. For a character, draw `frames` for the modes where a part should move, such as stepping legs for `run`. Copy the sprite and change only that part ([Frames](FORMAT.md#frames)).
+7. Set `mini` from the pet's light, base, and outline colors.
 
 Example, a front-facing cat ([`assets/duck.json`](../../assets/duck.json) is a side-facing one):
 
@@ -96,7 +98,7 @@ Example, a front-facing cat ([`assets/duck.json`](../../assets/duck.json) is a s
 **The scene.** Set it in the place the pet lives: grass and rocks, a moon with craters, a pond. [`assets/alien.json`](../../assets/alien.json) has a moon scene.
 
 1. Draw a `ground` tile 16 wide and 2 high, with a little texture so the repeat is not flat.
-2. Draw 2 or 3 `obstacles` with different silhouettes, 3 to 6 pixels high and narrow, so each reads as a thing to jump.
+2. Draw 2 or 3 `obstacles` with different silhouettes, 3 to 6 pixels high and narrow, so each reads as a thing on the ground.
 3. Add a few small `decor` drawings: on the ground (a tuft, a flower) or raised into the sky with clear rows below (a cloud, a star). Raised decor drifts across the sky.
 4. Draw a `sky` that suits the place, such as a sun, a moon, or a planet. It stays put near the top right, and the drifting decor passes in front of it.
 5. Leave the rest of the sky clear. A filled background turns the band into a block of color over the user's terminal.

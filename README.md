@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/slime.gif" width="160" alt="The slime breathes, blinks, jumps, and cheers">
+  <img src="docs/images/slime.gif" width="160" alt="The slime breathes, blinks, bounces, and cheers">
 </p>
 
 <h1 align="center">pixel-pet</h1>
@@ -36,8 +36,8 @@ To uninstall, run `claude plugin uninstall pixel-pet@pixel-pet`.
 | When | The pet |
 | --- | --- |
 | Claude is idle | Breathes, blinks, and looks around. Falls asleep after the **Sleep after** time, a minute by default. |
-| A turn starts | Jumps |
-| A tool call ends | Runs back and forth for 4 seconds |
+| A turn starts | Bounces in place |
+| A tool call ends | Walks back and forth for 4 seconds |
 | Claude thinks longer | Looks around, with `?` and dots |
 | `Read` | Reads a book: `reading app.ts` |
 | `Grep`, `Glob` | Sweeps a magnifier: `hunting for "useState"` |
@@ -73,7 +73,7 @@ Ask Claude in any session, or run `/pixel-pet:pixel-pet`. You can change:
 - **its minis**: "a tiny saucer for each subagent";
 - **the text**: "alien status lines", "make the bash line red";
 - **the HUD**: "a green frame", "rename HP to FUEL", "hide ST";
-- **the scene**: "a moon surface with rocks to jump over", "grass and flowers behind the pet";
+- **the scene**: "a moon surface with rocks along the ground", "grass and flowers behind the pet";
 - **the settings** below, such as speed and sleep.
 
 Claude opens a preview in your browser first: every motion, face, status line, and HUD look, and the pet running through its scene, on a dark or a light background. Say what to change, and Claude redraws it. When you approve, the change shows above the prompt at once and stays for later sessions. To undo, ask for the slime back.
@@ -136,7 +136,7 @@ plugins/pixel-pet/                the plugin: a Claude Code mod
   .claude-plugin/plugin.json      the plugin's name, version, and settings
   hooks/hooks.json                points Claude Code at register.tsx
   hooks/register.tsx              wires Claude Code's events to the modules below, and serves the tools
-  hooks/anim.ts                   decides what the pet does on each tick, and when it leaps an obstacle
+  hooks/anim.ts                   decides what the pet does on each tick
   hooks/pixels.ts                 draws a frame: body, eyes, props, effects, and minis
   hooks/theme.ts                  reads a theme and makes its pet's frames for every motion
   hooks/scene.ts                  lays out a theme's scene and draws the band with it

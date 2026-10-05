@@ -1,11 +1,9 @@
 import { expect, test } from 'claude-code/testing'
 
-import { LEAP_MS, leapClipMs, leapX, step } from './anim'
-import type { Activity } from './anim'
-import { HEIGHT, compose } from './pixels'
-import { DRIFT_MS, GROUND_H, SCENE_SIZE, drawBand, layScene, obstacleSpans } from './scene'
+import { HEIGHT } from './pixels'
+import { DRIFT_MS, GROUND_H, drawBand, layScene } from './scene'
 import type { Scene } from './scene'
-import { animate, maxSize, readTheme } from './theme'
+import { animate, readTheme } from './theme'
 
 const rock = ['.rr.', 'rrrr']
 const bodyOf = (v: unknown) => {
@@ -17,10 +15,10 @@ const bodyOf = (v: unknown) => {
 }
 const scene: Scene = { ground: ['gg.'], obstacles: [rock, ['r', 'r', 'r']], decor: [['y'], ['yy', '..']], every: 40 }
 
-test('a scene lays out the same way at the same width, with obstacles far enough apart to leap one after another', () => {
+test('a scene lays out the same way at the same width, with obstacles spread apart and decor clear of them', () => {
   const layout = layScene(scene, 300)
   expect(layScene(scene, 300)).toEqual(layout)
-  const spans = obstacleSpans(layout)
+  const spans = layout.obstacles.map(o => ({ x: o.x, w: Math.max(...o.rows.map(r => r.length)) }))
   expect(spans[0]?.x).toBe(24)
   expect(spans.every(o => o.x + o.w <= 300)).toBe(true)
   for (let k = 1; k < spans.length; k++) {
@@ -75,29 +73,4 @@ test('the sky drawing stays near the top right, behind drifting decor', () => {
     return band.px[y * band.w + x]
   }
   expect([at(0, 12, 1), at(0, 13, 2), at(9000, 12, 1)]).toEqual([0xffff00, 0xff8800, 0xff8800])
-})
-
-test('the largest pet clears the tallest, widest obstacle at every frame of a leap, both ways', () => {
-  const max = maxSize(1)
-  const body = bodyOf({ sprite: Array.from({ length: max.h }, () => 'b'.repeat(max.w)), palette: { b: '#888888' } })
-  const o = { x: 60, w: SCENE_SIZE.obstacle.w }
-  const top = HEIGHT - SCENE_SIZE.obstacle.h
-  for (const dir of [1, -1] as const) {
-    const w: Activity = { isWorking: true, activeTools: 0, activeMode: 'bash', activeTarget: '', lastToolAt: 1e9, room: 200, obstacles: [o], trail: 0 }
-    let a = step({ mode: 'run', since: 0, x: dir === 1 ? 20 : 100, dir, tick: 0, target: '', working: true }, w, 0)
-    for (let t = 100; !a.leap && t < 20000; t += 100) {
-      a = step(a, w, t)
-    }
-    const leap = a.leap as NonNullable<typeof a.leap>
-    for (let u = 0; u <= LEAP_MS; u += 5) {
-      const picture = compose(body, 'jump', leapClipMs(u), dir)
-      const x = Math.round(leapX(leap, u))
-      for (let y = top; y < HEIGHT; y++) {
-        for (let c = o.x; c < o.x + o.w; c++) {
-          const inside = c - x >= 0 && c - x < picture.w
-          expect(inside && picture.px[y * picture.w + c - x] !== -1).toBe(false)
-        }
-      }
-    }
-  }
 })
