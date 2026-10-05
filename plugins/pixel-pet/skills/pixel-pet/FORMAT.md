@@ -133,7 +133,7 @@ A character moves parts a squash cannot: legs that step, an arm raised to salute
 ```
 
 - A frame is rows in the pet's `palette`, like the sprite, up to 27×18. One frame is a list of rows; several are a list of frames, up to 8.
-- Draw each frame as the sprite with the parts that move changed, the same width and height. The mod places a frame as it places the sprite, so the eyes and cheeks land on the same points. A frame one column wider than the sprite keeps the pet in place and reaches one column further right, where the prop starts: a rifle drawn to the frame's edge meets a `bash` prop.
+- Draw each frame as the sprite with the parts that move changed. A frame's left edge and bottom row sit where the sprite's do, so the eyes and cheeks land on the same points. A frame wider than the sprite reaches further right, toward the prop: an arm drawn to the frame's edge can meet a `bash` prop.
 - `stand` in place of a mode draws every mode on the stand clip (`idle`, `sleep`, `read`, `search`, `edit`, `bash`, `web`, `agent`, `error`) that has no frames of its own. Stand frames hold the pet still where the stand clip breathes, so a tall feature such as hair keeps its height.
 - A looping mode plays its frames at 4 a second, `run` at 8, and `stand` at 2. A mode with a fixed length (`jump`, `cheer`, `error`) spreads its frames across that length and holds the last.
 - `cheer` frames keep the sparkles. A `run` frame faces right and is mirrored when the pet walks left. A pet with `wander` plays its `run` frames while it walks idle.

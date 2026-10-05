@@ -445,7 +445,9 @@ const colorOf = (color: string) => parseInt(color.slice(1), 16)
 
 function poseFrame(theme: Theme, pose: Pose, extra: [number, number][] = [], sprite = theme.sprite): BodyFrame {
   const [sx, sy] = [pose[0] * theme.scale, pose[1] * theme.scale]
-  const sw = (sprite[0] as string).length
+  // A drawn frame is placed by the sprite's width, so its left edge sits where the sprite's does and extra columns reach right.
+  const sw = (theme.sprite[0] as string).length
+  const fw = (sprite[0] as string).length
   const sh = sprite.length
   const cx = sw / 2
   const tcx = sw % 2 ? BODY_W / 2 : Math.floor(BODY_W / 2) // whole-pixel aligned, so at scale 1 a resting sprite is copied, not resampled
@@ -466,7 +468,7 @@ function poseFrame(theme: Theme, pose: Pose, extra: [number, number][] = [], spr
       const v1 = sh - (tb - ty - 1) / sy
       const cover = new Map<string, number>()
       for (let v = Math.max(0, Math.floor(v0)); v < Math.min(sh, Math.ceil(v1)); v++) {
-        for (let u = Math.max(0, Math.floor(u0)); u < Math.min(sw, Math.ceil(u1)); u++) {
+        for (let u = Math.max(0, Math.floor(u0)); u < Math.min(fw, Math.ceil(u1)); u++) {
           const area = (Math.min(u1, u + 1) - Math.max(u0, u)) * (Math.min(v1, v + 1) - Math.max(v0, v))
           const ch = (sprite[v] as string)[u] as string
           if (area > 0 && ch !== '.') {

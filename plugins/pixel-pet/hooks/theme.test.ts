@@ -190,6 +190,10 @@ test('a pet carries its own frames by mode, and an eye color by mode', () => {
   expect([body.frames.run?.fps, body.frames.jump?.fps, body.frames.stand?.fps]).toEqual([8, 1 / (14 / 12), 2])
   expect(body.frames.run?.frames[1]?.g.at(-1)).toBe('.............a.............')
   expect(body.eyeColors).toEqual({ think: 0xffcc00 })
+  const wide = animate(themeOf({ sprite: ['aa', 'aa'], palette: { a: '#123456' }, frames: { bash: ['aaaaa', 'aa...'] } }))
+  const rest = wide.clips.stand.frames[0]!.g.at(-1) as string
+  expect(wide.frames.bash?.frames[0]?.g.at(-1)?.indexOf('a')).toBe(rest.indexOf('a'))
+  expect(wide.frames.bash?.frames[0]?.g.at(-2)?.slice(rest.indexOf('a'), rest.indexOf('a') + 5)).toBe('aaaaa')
   expect(body.faces).toEqual({ bash: 'focus' })
 })
 
