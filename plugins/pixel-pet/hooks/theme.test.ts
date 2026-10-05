@@ -155,7 +155,7 @@ test('a pet carries its own props, mini, lines, line colors, and HUD look', () =
   }
   expect(read.notes).toEqual([])
   expect(read.theme.props).toEqual({ read: [['yy', 'yy']], web: [['y'], ['.y']], bash: null })
-  expect(read.theme.miniSprite).toEqual(['.y.', 'yyy'])
+  expect(read.theme.miniSprite).toEqual([['.y.', 'yyy']])
   expect(read.theme.lines).toEqual({ think: ['probing the problem'], read: ['scanning {}'] })
   expect(read.theme.lineColors).toEqual({ think: '#44cc44' })
   expect(read.theme.hud).toEqual({ frame: '#44cc44', hp: { label: '☢ FUEL', fill: ['#003300', '#00ff88'] }, st: false })
@@ -212,7 +212,7 @@ test('a look the mod cannot use is left out or cut, with a note', () => {
   }
   expect(read.theme.props.edit?.[0]).toHaveLength(18)
   expect(read.theme.props.edit?.[0]?.[0]).toHaveLength(16)
-  expect(read.theme.miniSprite).toEqual(['aaaaa'])
+  expect(read.theme.miniSprite).toEqual([['aaaaa']])
   expect(read.theme.lines).toEqual({ think: ['x'.repeat(40)] })
   expect(read.theme.hud).toEqual({ hp: { label: 'FUELTA' } })
   expect(read.notes).toEqual([

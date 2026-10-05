@@ -109,12 +109,18 @@ test("a pet's own prop replaces the mod's, plays its frames, and null leaves the
 })
 
 test("a pet's own mini draws in its palette, and grey once its subagent fails", () => {
-  const own: Body = { ...body, palette: { d: 0x3d84f0, g: 0x44cc44 }, miniSprite: ['ggggg'] }
+  const own: Body = { ...body, palette: { d: 0x3d84f0, g: 0x44cc44 }, miniSprite: [['ggggg']] }
   const running = compose(own, 'idle', 0, 1, 'ok', [{ age: 5000 }])
   const failed = compose(own, 'idle', 0, 1, 'ok', [{ age: 5000, doneFor: 100, failed: true }])
   expect(running.px.filter(c => c === 0x44cc44)).toHaveLength(5)
   expect(failed.px.filter(c => c === 0x44cc44)).toHaveLength(0)
   expect(failed.px.filter(c => c !== -1 && ((c >> 16) & 255) === (c & 255) && (c & 255) === ((c >> 8) & 255)).length).toBeGreaterThanOrEqual(5)
+})
+
+test('subagents take turns through a pet\'s minis', () => {
+  const own: Body = { ...body, palette: { d: 0x3d84f0, g: 0x44cc44, y: 0xffe25a }, miniSprite: [['ggggg'], ['yyyyy']] }
+  const count = (minis: number) => compose(own, 'idle', 0, 1, 'ok', Array.from({ length: minis }, () => ({ age: 5000 }))).px
+  expect([0x44cc44, 0xffe25a].map(c => count(3).filter(p => p === c).length - count(0).filter(p => p === c).length)).toEqual([10, 5])
 })
 
 test('crop takes a part of a canvas', () => {

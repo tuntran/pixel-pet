@@ -13,7 +13,7 @@ export type Body = {
   palette: Record<string, number> // frame character -> color
   eye: Record<string, number> // expression character -> color
   mini: MiniColors
-  miniSprite?: string[] // the pet's own mini, in its palette, in place of the drop
+  miniSprite?: string[][] // the pet's own minis, in its palette, in place of the drop; the kth subagent draws the (k mod n)th
   props: Partial<Record<Mode, string[][] | null>> // the pet's own props: frames of rows in its palette; null for none
   frames: Partial<Record<Mode | 'stand', { fps: number; frames: BodyFrame[] }>> // the pet's own drawn frames, in place of a mode's clip; `stand` for every mode on the stand clip
   wander?: boolean // the pet walks while idle
@@ -361,7 +361,7 @@ function drawMini(c: Canvas, ox: number, m: MiniView, k: number, body: Body) {
   } else if (m.doneFor !== undefined && !m.failed) {
     lift = Math.round(Math.abs(Math.sin(m.doneFor / 160)) * 5)
   }
-  const rows = body.miniSprite
+  const rows = body.miniSprite?.[k % body.miniSprite.length]
   const y = HEIGHT - (rows?.length ?? 5) - lift
   if (rows) {
     const palette = m.failed ? Object.fromEntries(Object.entries(body.palette).map(([ch, color]) => [ch, grey(color)])) : body.palette

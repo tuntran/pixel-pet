@@ -1,6 +1,6 @@
 import type { Mode } from '../types'
 import type { BarLook, HudLook } from './hud'
-import { BODY_W, EYE_COLOR, FACES, HEIGHT, MINI_SIZE, MODES, PROP_W } from './pixels'
+import { BODY_W, EYE_COLOR, FACES, HEIGHT, MAX_MINIS, MINI_SIZE, MODES, PROP_W } from './pixels'
 import type { Body, BodyFrame, Look } from './pixels'
 import { EVERY, SCENE_SIZE } from './scene'
 import type { Scene } from './scene'
@@ -17,7 +17,7 @@ export type Theme = {
   cheeks?: [[number, number], [number, number]]
   cheekColor?: string
   mini: { top: string; body: string; edge: string }
-  miniSprite?: string[]
+  miniSprite?: string[][] // one or more minis; the kth subagent's mini is the (k mod n)th
   props: Body['props']
   frames: Partial<Record<Mode | 'stand', string[][]>> // the pet's own drawn frames by mode, in place of its clip; `stand` for every mode on the stand clip
   wander: boolean
@@ -167,6 +167,18 @@ function readProps(v: unknown, palette: Record<string, string>, notes: string[])
 }
 
 /** The pet's own drawn frames by mode: each a list of up to MAX_FRAMES frames of rows, or one frame. */
+function readMinis(v: unknown, palette: Record<string, string>, notes: string[]) {
+  const list = Array.isArray(v) && v.length > 0 && v.every(Array.isArray) ? v : [v]
+  if (list.length > MAX_MINIS) {
+    notes.push(`\`miniSprite\` keeps its first ${MAX_MINIS} minis.`)
+  }
+  const kept = list
+    .slice(0, MAX_MINIS)
+    .map((m, i) => paletteRows(m, MINI_SIZE, palette, list.length > 1 ? `mini ${i + 1} of \`miniSprite\`` : '`miniSprite`', notes))
+    .filter((m): m is string[] => m !== undefined)
+  return kept.length > 0 ? kept : undefined
+}
+
 function readFrames(v: unknown, palette: Record<string, string>, notes: string[]) {
   return byMode<string[][], Mode | 'stand'>(v, 'frames', (value, mode) => {
     const list = Array.isArray(value) && value.length > 0 && value.every(Array.isArray) ? value : [value]
@@ -412,7 +424,7 @@ export function readTheme(v: unknown): { theme: Theme; notes: string[]; errors?:
   if (v.mini !== undefined && !hasMini) {
     notes.push('`mini` needs three colors, `top`, `body`, and `edge`, so the minis keep the slime\'s blues.')
   }
-  const miniSprite = v.miniSprite === undefined ? undefined : paletteRows(v.miniSprite, MINI_SIZE, palette, '`miniSprite`', notes)
+  const miniSprite = v.miniSprite === undefined ? undefined : readMinis(v.miniSprite, palette, notes)
 
   return {
     theme: {

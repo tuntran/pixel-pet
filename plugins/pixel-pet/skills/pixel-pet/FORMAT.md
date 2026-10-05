@@ -16,7 +16,7 @@ Two example pets ship with the plugin: [`assets/slime.json`](../../assets/slime.
 | `cheeks` | | Two `[x, y]` pixels, one per cheek. |
 | `cheekColor` | | The cheeks' color. Default `"#ff8aaa"`. |
 | `mini` | | `{ "top", "body", "edge" }`: the three colors of the drop-shaped mini each running subagent gets. Default the slime's blues: `#9ad2ff`, `#3d84f0`, `#1e3a8a`. See [Minis](#minis). |
-| `miniSprite` | | Rows of text, up to 5×7, drawn as the mini in place of the drop. See [Minis](#minis). |
+| `miniSprite` | | Rows of text, up to 5×7, drawn as the mini in place of the drop, or a list of up to 6 such drawings. See [Minis](#minis). |
 | `props` | | `{ "<mode>": frames }` or `{ "<mode>": false }`: the pet's own prop for a mode, or none. See [Props](#props). |
 | `frames` | | `{ "<mode>": frames }`: drawings of the pet that a mode plays in place of its squashed sprite, such as legs that step or an arm raised. See [Frames](#frames). |
 | `eyeColors` | | `{ "<mode>": "#rrggbb" }`: the pupils' color in a mode, in place of `eyeColor`. See [Frames](#frames). |
@@ -146,7 +146,7 @@ A character moves parts a squash cannot: legs that step, an arm raised to salute
 A mini is the small figure that joins the trail behind the pet for each running subagent, up to 6 at a time. It hops while its subagent runs, leaves with a sparkle when the subagent finishes, and turns grey when the subagent fails.
 
 - `mini` colors the mod's drop shape: `top` is the light tip, `body` the belly, `edge` the base. All three are needed, or the minis keep the slime's blues.
-- `miniSprite` replaces the drop. It is rows in the pet's `palette`, up to 5 pixels wide and 7 high. The drop is 5×5. `mini` colors are not used while there is a `miniSprite`.
+- `miniSprite` replaces the drop. It is rows in the pet's `palette`, up to 5 pixels wide and 7 high. The drop is 5×5. A list of drawings gives each subagent its own: the first subagent draws the first, and they take turns past the end of the list. `mini` colors are not used while there is a `miniSprite`.
 
 ## Status lines
 
@@ -229,6 +229,7 @@ The tools return a note for each repair. Each row is a repair and its cause.
 | Eye boxes merge | Pupils less than 3 pixels apart across and down. |
 | Cheek inside an eye box | Some faces draw over the cheek. |
 | `miniSprite` or a prop frame left out | It is not a list of text rows, or every row is empty. |
+| Extra minis left out | `miniSprite` lists more than 6 drawings. |
 | Bottom-left part of a drawing kept | A prop frame is past 16×18, a `frames` frame past 27×18, or `miniSprite` past 5×7. |
 | A prop or a mode's `frames` keep the first 8 | It has more than 8 frames. |
 | A scene drawing cut, or the first 4 kept | A ground tile past 16×2, a sky drawing past 16×12, an obstacle past 16×12, decor past 16×18, or more than 4 obstacles or decor. |
